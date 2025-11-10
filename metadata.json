@@ -1,0 +1,8 @@
+{
+  "name": "Visual Co",
+  "description": "A creative co-pilot for visual storytelling. Establish a consistent visual style for your project and then quickly generate concept art for scenes and characters that all match that style.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}
