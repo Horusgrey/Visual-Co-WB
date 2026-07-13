@@ -1,0 +1,25 @@
+{
+  "schema": "vco.appearance/v1",
+  "id": "CHAR-02-LIN",
+  "version": "v1.0",
+  "status": "LOCKED",
+  "source_canvas": "../canvases/03_Character_Costume_Set_LIN.md",
+  "ingestion_target": "VCO Characters Tab / EDNA Asset Prep",
+  "appearance_logic": "Fluidity weaponized. She looks like she can move faster than anyone else in the room.",
+  "costume_locks": [
+    "Asymmetrical civic drape",
+    "Muted crimson silk layered over matte black undergarments",
+    "Silver cuffs",
+    "No jewelry"
+  ],
+  "render_prompt_core": "hyper-realistic cinematic portrait, sharp-featured woman, dark hair pulled into severe tight knot, wearing asymmetrical muted crimson silk over black, modern authoritarian logistics uniform, cold ambient lighting, architectural shadows, 8k, photorealistic",
+  "world_ref": "../canvases/01_Production_Bible.md",
+  "inherited_negative_prompt": [
+    "cyberpunk neon",
+    "dirt/grime",
+    "casual wear",
+    "shaky cam",
+    "chaotic clutter",
+    "daylight"
+  ]
+}

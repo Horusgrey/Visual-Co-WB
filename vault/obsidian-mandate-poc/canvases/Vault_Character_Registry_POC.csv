@@ -1,0 +1,3 @@
+ID,Name,Brief Description,Appearance JSON,Soul JSON,Portrait Prompt,Status,Version
+CHAR-01-THORNE,Elias Thorne,Cornered Incumbent,app_json_thorne_v1.json,soul_json_thorne_v1.json,"[hyper-realistic cinematic portrait, older severe man, pale skin, sharp cheekbones...]",LOCKED,v1.0
+CHAR-02-LIN,Vespera Lin,Cold Reformist,app_json_lin_v1.json,soul_json_lin_v1.json,"[hyper-realistic cinematic portrait, sharp-featured woman, dark hair pulled into severe tight knot...]",LOCKED,v1.0

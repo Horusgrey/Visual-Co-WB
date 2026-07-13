@@ -1,0 +1,18 @@
+{
+  "schema": "vco.soul/v1",
+  "id": "CHAR-02-LIN",
+  "version": "v1.0",
+  "status": "LOCKED",
+  "source_canvas": "../canvases/02_Character_Bible_LIN.md",
+  "ingestion_target": "VCO Script Tab / Context Engine",
+  "name": "Minister Vespera Lin",
+  "role": "The Cold Reformist",
+  "voice": {
+    "register": "Rapid, clinical, dismissive.",
+    "volume_rule": "Speaks in bullet points and inevitable conclusions.",
+    "tactic": "Uses data as a blunt instrument."
+  },
+  "brief_bio": "Rose through the logistics divisions. She doesn't care about ideology; she cares about efficiency. She has already secured the council's votes before this conversation even begins.",
+  "core_drive": "Excise the inefficient elements of the government (meaning Thorne).",
+  "emotional_posture": "Absolute, bored certainty."
+}

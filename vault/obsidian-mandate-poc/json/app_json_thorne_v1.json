@@ -1,0 +1,25 @@
+{
+  "schema": "vco.appearance/v1",
+  "id": "CHAR-01-THORNE",
+  "version": "v1.0",
+  "status": "LOCKED",
+  "source_canvas": "../canvases/03_Character_Costume_Set_THORNE.md",
+  "ingestion_target": "VCO Characters Tab / EDNA Asset Prep",
+  "appearance_logic": "Imposing verticality. The clothes act as armor to hide his aging, failing physical body.",
+  "costume_locks": [
+    "Heavy charcoal wool greatcoat",
+    "High, stiff collar that forces his chin up",
+    "Hidden buttons",
+    "A single, geometric obsidian lapel pin"
+  ],
+  "render_prompt_core": "hyper-realistic cinematic portrait, older severe man, pale skin, sharp cheekbones, wearing strict charcoal military greatcoat with high stiff collar, brutalist authoritarian elegance, harsh top-down spotlighting, 8k, Arri Alexa, pristine focus",
+  "world_ref": "../canvases/01_Production_Bible.md",
+  "inherited_negative_prompt": [
+    "cyberpunk neon",
+    "dirt/grime",
+    "casual wear",
+    "shaky cam",
+    "chaotic clutter",
+    "daylight"
+  ]
+}
