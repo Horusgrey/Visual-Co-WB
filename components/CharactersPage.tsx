@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import type { Character } from '../types';
+import type { Character, WorldBible } from '../types';
 import { generateImage, generateCharacterBio } from '../services/geminiService';
+import { applyWorldLock, isWorldLockActive } from '../services/worldLock';
 import Spinner from './common/Spinner';
 import Icon from './common/Icon';
 import Tooltip from './common/Tooltip';
@@ -16,9 +17,10 @@ const ASPECT_RATIOS: { value: AspectRatio; label: string }[] = [
 interface CharactersPageProps {
   characters: Character[];
   setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
+  worldBible?: WorldBible | null;
 }
 
-const CharactersPage: React.FC<CharactersPageProps> = ({ characters, setCharacters }) => {
+const CharactersPage: React.FC<CharactersPageProps> = ({ characters, setCharacters, worldBible }) => {
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,11 @@ const CharactersPage: React.FC<CharactersPageProps> = ({ characters, setCharacte
     setError(null);
     try {
       const aspectRatio = characterAspectRatios[id] || '1:1';
-      const image = await generateImage(character.lookPrompt, aspectRatio);
+      // World locks are injected here, not stored in lookPrompt, so the
+      // character's own prompt stays editable and the bible stays the one
+      // place the rules live.
+      const lockedPrompt = applyWorldLock(character.lookPrompt, worldBible, 'character');
+      const image = await generateImage(lockedPrompt, aspectRatio);
       setCharacters(chars => chars.map(c => c.id === id ? { ...c, image, isLoadingImage: false } : c));
     } catch (err) {
       setError(`Failed to generate look for ${character.name}.`);

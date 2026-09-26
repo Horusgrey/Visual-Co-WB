@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { StyleSeed, Scene, Character, ScriptLine } from './types';
+import type { StyleSeed, Scene, Character, ScriptLine, WorldBible } from './types';
 import HomePage from './components/HomePage';
 import ScenesPage from './components/ScenesPage';
 import CharactersPage from './components/CharactersPage';
@@ -20,6 +20,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('scenes');
   const [styleSeed, setStyleSeed] = useState<StyleSeed | null>(null);
   const [styleSeedHistory, setStyleSeedHistory] = useState<StyleSeed[]>([]);
+  const [worldBible, setWorldBible] = useState<WorldBible | null>(null);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [script, setScript] = useState<ScriptLine[]>([]);
@@ -37,14 +38,16 @@ function App() {
       const savedData = localStorage.getItem('visual-copilot-data');
       if (savedData) {
         setHasExistingProject(true);
-        const { 
-          styleSeed: savedStyleSeed, 
-          scenes: savedScenes, 
+        const {
+          styleSeed: savedStyleSeed,
+          scenes: savedScenes,
           characters: savedCharacters,
           script: savedScript,
           styleSeedHistory: savedStyleSeedHistory,
+          worldBible: savedWorldBible,
         } = JSON.parse(savedData);
         if (savedStyleSeed) setStyleSeed(savedStyleSeed);
+        if (savedWorldBible) setWorldBible(savedWorldBible);
         if (savedScenes) setScenes(savedScenes);
         if (savedCharacters) setCharacters(savedCharacters);
         if (savedScript) setScript(savedScript);
@@ -67,7 +70,7 @@ function App() {
     // Add a small delay so the user can see the "Saving..." state
     const timer = setTimeout(() => {
       try {
-        const dataToSave = JSON.stringify({ styleSeed, scenes, characters, script, styleSeedHistory });
+        const dataToSave = JSON.stringify({ styleSeed, scenes, characters, script, styleSeedHistory, worldBible });
         localStorage.setItem('visual-copilot-data', dataToSave);
         setHasExistingProject(true); // Mark that a project now exists
         setSaveState('saved');
@@ -78,7 +81,7 @@ function App() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [styleSeed, scenes, characters, script, styleSeedHistory, isWorldLoaded]);
+  }, [styleSeed, scenes, characters, script, styleSeedHistory, worldBible, isWorldLoaded]);
 
   // Effect to reset the 'saved' status indicator after a delay
   useEffect(() => {
@@ -95,6 +98,7 @@ function App() {
     localStorage.removeItem('visual-copilot-data');
     setStyleSeed(null);
     setStyleSeedHistory([]);
+    setWorldBible(null);
     setScenes([]);
     setCharacters([]);
     setScript([]);
@@ -115,6 +119,10 @@ function App() {
         setCharacters(projectData.characters || []);
         setScript(projectData.script || []);
         setStyleSeedHistory(projectData.styleSeedHistory || (projectData.styleSeed ? [projectData.styleSeed] : []));
+        // World bible arrives from ingested canvas cartridges; `meta` carries id/title.
+        setWorldBible(projectData.worldBible
+          ? { ...projectData.worldBible, ...(projectData.meta || {}) }
+          : null);
         
         // Save imported data to make it the current draft
         const dataToSave = JSON.stringify(projectData);
@@ -245,10 +253,12 @@ function App() {
               setStyleSeedHistory={setStyleSeedHistory}
               scenes={scenes}
               setScenes={setScenes}
+              worldBible={worldBible}
+              setWorldBible={setWorldBible}
             />
           )}
           {currentPage === 'characters' && (
-            <CharactersPage characters={characters} setCharacters={setCharacters} />
+            <CharactersPage characters={characters} setCharacters={setCharacters} worldBible={worldBible} />
           )}
            {currentPage === 'script' && (
             <ScriptBuilderPage characters={characters} script={script} setScript={setScript} />
@@ -264,7 +274,7 @@ function App() {
       <ExportModal 
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        projectData={{ styleSeed, scenes, characters, script, styleSeedHistory }}
+        projectData={{ styleSeed, scenes, characters, script, styleSeedHistory, worldBible }}
       />
       <VoiceAssistantWidget />
     </>

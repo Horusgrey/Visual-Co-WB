@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { Scene, StyleSeed, Place } from '../types';
+import type { Scene, StyleSeed, Place, WorldBible } from '../types';
 import { generateImage, enhancePrompt, rewritePromptForStyle, fileToBase64, findLocationForPrompt, generatePromptVariations } from '../services/geminiService';
+import { applyWorldLock, isWorldLockActive } from '../services/worldLock';
 import Spinner from './common/Spinner';
 import Icon from './common/Icon';
 import ImageEditorModal from './ImageEditorModal';
@@ -14,7 +15,19 @@ interface ScenesPageProps {
   setStyleSeedHistory: React.Dispatch<React.SetStateAction<StyleSeed[]>>;
   scenes: Scene[];
   setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
+  worldBible: WorldBible | null;
+  setWorldBible: React.Dispatch<React.SetStateAction<WorldBible | null>>;
 }
+
+// Editable fields of the production bible, in the order they read on screen.
+const WORLD_FIELDS: { key: keyof WorldBible; label: string; placeholder: string }[] = [
+  { key: 'visual_style', label: 'Visual Style', placeholder: 'Monumental, doctrinal, militarized elegance. Harsh geometric shadows.' },
+  { key: 'aesthetic_locks', label: 'Aesthetic Locks', placeholder: 'Brutalist architecture, stark monochrome punctuated by aggressive accent colors.' },
+  { key: 'location_rules', label: 'Location Rules', placeholder: 'Vaulted ceilings, massive scale, polished stone floors. Zero natural light.' },
+  { key: 'tone', label: 'Tone', placeholder: 'Tense, whispered paranoia, claustrophobic despite vast spaces.' },
+  { key: 'time_period', label: 'Time Period', placeholder: 'Unspecified Neo-Authoritarian present.' },
+  { key: 'negative_prompt', label: 'Forbidden Drift', placeholder: 'No cyberpunk neon, no dirt, no casual wear, no daylight.' },
+];
 
 const stylePresets = [
   {
@@ -45,7 +58,7 @@ const stylePresets = [
 
 const MAX_HISTORY_LENGTH = 8;
 
-const ScenesPage: React.FC<ScenesPageProps> = ({ styleSeed, setStyleSeed, styleSeedHistory, setStyleSeedHistory, scenes, setScenes }) => {
+const ScenesPage: React.FC<ScenesPageProps> = ({ styleSeed, setStyleSeed, styleSeedHistory, setStyleSeedHistory, scenes, setScenes, worldBible, setWorldBible }) => {
   const [stylePrompt, setStylePrompt] = useState('gritty, near-future Twin Cities, neon signs reflect in puddles on cracked pavement, moody, atmospheric, cinematic lighting');
   const [locationQuery, setLocationQuery] = useState('a moody, historic bar in New Orleans');
   const [scenePrompt, setScenePrompt] = useState('a character walks into a dimly lit coffee shop');
@@ -63,7 +76,14 @@ const ScenesPage: React.FC<ScenesPageProps> = ({ styleSeed, setStyleSeed, styleS
   const [scoutedPlaces, setScoutedPlaces] = useState<Place[] | null>(null);
 
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [isBibleOpen, setIsBibleOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const worldLockActive = isWorldLockActive(worldBible);
+
+  const updateWorldField = (key: keyof WorldBible, value: string) => {
+    setWorldBible(prev => ({ ...(prev || {}), [key]: value }));
+  };
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -103,9 +123,9 @@ const updateAndRecordStyleSeed = (newSeed: StyleSeed) => {
     setIsLoadingStyleSeed(true);
     setError(null);
     try {
-      const base64Image = await generateImage(stylePrompt);
-      updateAndRecordStyleSeed({ 
-        image: base64Image, 
+      const base64Image = await generateImage(applyWorldLock(stylePrompt, worldBible, 'scene'));
+      updateAndRecordStyleSeed({
+        image: base64Image,
         prompt: stylePrompt,
         mimeType: 'image/jpeg',
       });
@@ -201,7 +221,8 @@ const updateAndRecordStyleSeed = (newSeed: StyleSeed) => {
 
         const newScenesPromises = promptsToGenerate.map(async (promptVar) => {
             const detailedPrompt = await rewritePromptForStyle(styleSeed.image, styleSeed.mimeType, promptVar);
-            const sceneImage = await generateImage(detailedPrompt);
+            // Locks are applied last so the style-seed rewrite cannot drop them.
+            const sceneImage = await generateImage(applyWorldLock(detailedPrompt, worldBible, 'scene'));
             return {
                 id: `${new Date().toISOString()}-${Math.random()}`, // Ensure unique id
                 prompt: promptVar,
@@ -254,6 +275,92 @@ const updateAndRecordStyleSeed = (newSeed: StyleSeed) => {
             <p>{error}</p>
           </div>
         )}
+
+        {/* Production Bible — world rules injected into every generation */}
+        <Card>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-brand-dark text-brand-light rounded-full text-xl font-bold border-2 border-brand-teal/50">
+                <Icon name="book" className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-brand-light flex items-center gap-2">
+                  Production Bible
+                  {worldLockActive ? (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-teal/20 text-brand-teal border border-brand-teal/40">
+                      LOCKS ACTIVE
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-700/40 text-gray-400 border border-gray-600">
+                      NO LOCKS
+                    </span>
+                  )}
+                </h2>
+                <p className="text-sm text-gray-400">
+                  {worldBible?.title
+                    ? `${worldBible.title} — rules applied to every image generated.`
+                    : 'World rules applied to every image generated.'}
+                </p>
+              </div>
+            </div>
+            <Tooltip text={isBibleOpen ? 'Collapse the production bible' : 'Edit the world rules applied to every generation'}>
+              <button
+                onClick={() => setIsBibleOpen(o => !o)}
+                className="flex-shrink-0 flex items-center gap-2 bg-brand-dark hover:bg-brand-purple/50 text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors"
+                aria-expanded={isBibleOpen}
+              >
+                <Icon name="edit" className="w-4 h-4" />
+                {isBibleOpen ? 'Done' : 'Edit'}
+              </button>
+            </Tooltip>
+          </div>
+
+          {isBibleOpen && (
+            <div className="mt-6 pt-6 border-t border-brand-purple/20 space-y-4 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {WORLD_FIELDS.map(field => (
+                  <div key={field.key} className={field.key === 'negative_prompt' ? 'md:col-span-2' : ''}>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      {field.label}
+                    </label>
+                    <textarea
+                      value={(worldBible?.[field.key] as string) || ''}
+                      onChange={(e) => updateWorldField(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      rows={2}
+                      className={`mt-1 w-full p-2 text-sm bg-brand-dark border rounded-lg focus:ring-2 focus:outline-none transition-all resize-none ${
+                        field.key === 'negative_prompt'
+                          ? 'border-red-500/40 focus:ring-red-500/60'
+                          : 'border-brand-purple/50 focus:ring-brand-pink'
+                      }`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={worldBible?.locked !== false}
+                  onChange={(e) => setWorldBible(prev => ({ ...(prev || {}), locked: e.target.checked }))}
+                  className="w-4 h-4 accent-brand-teal"
+                />
+                Enforce these locks on every generation
+              </label>
+
+              {worldLockActive && (
+                <details className="bg-brand-dark/50 rounded-lg border border-brand-purple/30">
+                  <summary className="cursor-pointer text-xs font-semibold text-gray-400 uppercase tracking-wider p-3">
+                    Preview injected prompt
+                  </summary>
+                  <p className="px-3 pb-3 text-xs text-gray-400 font-mono whitespace-pre-wrap break-words">
+                    {applyWorldLock('[your scene prompt]', worldBible, 'scene')}
+                  </p>
+                </details>
+              )}
+            </div>
+          )}
+        </Card>
 
         {/* Step 1: Style Seed */}
         <Card>

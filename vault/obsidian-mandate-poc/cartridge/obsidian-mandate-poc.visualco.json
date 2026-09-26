@@ -3,7 +3,7 @@
     "project_id": "VCO-POC-042126-01",
     "title": "The Obsidian Mandate (POC Scene)",
     "source": "vault/obsidian-mandate-poc/canvases",
-    "note": "Import via Home > Import. Extra keys (meta, worldBible) are preserved in localStorage but not consumed by the current app schema — see vault README for the mapping audit."
+    "note": "Import via Home > Import. The worldBible key is consumed by the engine: its locks are injected into every image generation (see services/worldLock.ts) and are editable under Scenes > Production Bible."
   },
   "worldBible": {
     "tone": "Tense, whispered paranoia, claustrophobic despite vast spaces.",

@@ -31,8 +31,8 @@ vault/obsidian-mandate-poc/
 | Character Bible: Name / Role | `Character.name` / `Character.role` | Lossless |
 | Character Bible: Bio + Voice + Drive + Posture | `Character.bio` (concatenated) | Lossy — voice rules become flavor text; the script engine reads `bio` as one blob, and TTS ignores it entirely (single hardcoded voice) |
 | Costume Set: Render Prompt Core + Costume Locks | `Character.lookPrompt` | Lossless, but world locks had to be baked in by hand (see gaps) |
-| Production Bible: aesthetic/location/negative rules | — (no world field in schema) | **Unmapped** — folded manually into each `lookPrompt`; carried in cartridge `worldBible` key, which the app preserves but never reads |
-| Production Bible: Negative Prompt rules | — (no negative-prompt channel) | **Unmapped** — `generateImage()` sends a single positive prompt string to Imagen; negatives were rewritten as positive constraints ("pristine and orderly, formal dress only, zero natural light") |
+| Production Bible: tone / style / location / period / aesthetic locks | `WorldBible` → injected by `applyWorldLock()` | Lossless — editable under **Scenes → Production Bible**, injected into every `generateImage()` call. Location rules are applied to scenes only, not portraits |
+| Production Bible: Negative Prompt rules | `WorldBible.negative_prompt` | Mapped with a caveat — Imagen exposes no negative-prompt parameter, so `applyWorldLock()` restates them as an explicit `strictly exclude: …` constraint. Enforcement is model-dependent, not guaranteed |
 | Registry: Status=LOCKED / Version | — | **Dropped** — lock semantics are not machine-enforced anywhere |
 | Soul/Appearance JSON refs | `json/*.json` | Were dangling in all four referencing documents; now materialized here |
 
