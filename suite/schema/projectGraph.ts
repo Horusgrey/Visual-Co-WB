@@ -506,6 +506,12 @@ export interface Project {
   logline?: string;
   stage: ProjectStage;
   worldId?: WorldId;
+  /**
+   * The Board that constitutes the cut. Delivery QC sums this Board's slot
+   * durations to get runtime — without it the runtime check cannot be
+   * computed, so a project with a DeliverySpec and no Board is not gradeable.
+   */
+  boardId?: BoardId;
   deliverySpec?: DeliverySpec;
   deliveryReport?: DeliveryReport;
 }
