@@ -1,10 +1,36 @@
 # Hollywood by HG — Suite Architecture
 
 **Project ID**: HG-SUITE-SCRATCH-MAP-0926
+**Source spec**: `reference/HOLLYWOOD_BY_HG_SUITE_MAP_v1-1.md`
 
 This directory holds the canonical schema and the mechanism that enforces the
 GLOBAL BUILD LAW. It is deliberately boring: no UI, no generation, no vendor
 calls. Engines are built against it, not inside it.
+
+This file and the schema are built against the v1.1 suite map in
+`reference/`. That document is the source of truth for what each department
+is *for*; this file and `schema/` are the executable form of it. Where they
+diverge, `CONFORMANCE.md` Finding 10 records the delta and which side won.
+
+## Operating model
+
+The one-line mnemonic from the source spec (slide 16) — the question each
+department exists to answer:
+
+| Department | Answers |
+|---|---|
+| VCO | What is project truth? |
+| CINEMA | What do we do next? |
+| EDNA | What does it look like? |
+| PLATE | Where is everything? |
+| BOARD | When does it happen? |
+| SHOT | What are we photographing? |
+| I2V (vendor, via Model Compiler) | Make it perform |
+| VCS-15 | What ended true? |
+
+*The user should feel like they are making a movie. The schema, providers,
+continuity services and generation adapters are crew working behind the
+walls — STUDIO, not TOOLBOX.*
 
 ## Global Build Law
 

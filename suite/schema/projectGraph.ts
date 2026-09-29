@@ -111,10 +111,22 @@ export interface Costume {
   visualPackages: VisualPackageId[];
 }
 
+/**
+ * `category` covers the deck's full EDNA canon list — "props, vehicles,
+ * creatures" — as one generic subject rather than three near-duplicate
+ * entities. That restraint is deliberate: CONFORMANCE.md Finding 1 is about
+ * exactly this failure mode (near-identical shapes multiplying because a
+ * new noun showed up in a spec). Vehicles and creatures need the same
+ * fields as a Prop — a name, a description, continuity locks, a visual
+ * package — so they get the same object with a tag, not a new one.
+ */
+export type PropCategory = 'prop' | 'vehicle' | 'creature' | 'set_dressing';
+
 export interface Prop {
   id: PropId;
   projectId: ProjectId;
   name: string;
+  category?: PropCategory; // defaults to 'prop' when absent
   description?: string;
   continuityLocks: string[];
   visualPackages: VisualPackageId[];
@@ -156,7 +168,17 @@ export interface VisualPackage extends Approvable {
     | { kind: 'character'; id: CharacterId; costume?: CostumeId }
     | { kind: 'place'; id: PlaceId }
     | { kind: 'prop'; id: PropId }
-    | { kind: 'style' };
+    | { kind: 'style' }
+    /**
+     * Multi-subject staging reference — the title slide's "ENSEMBLE /
+     * REFERENCE" pillar, distinct from any single character's own canon.
+     * Verifies things a solo portrait can't: relative scale, color harmony
+     * and silhouette separation when two or more subjects share a frame.
+     * It never substitutes for a subject's own VisualPackage — it only
+     * proposes cross-subject invariants (e.g. "Lin's crimson must not read
+     * as Thorne's obsidian pin under the same key light").
+     */
+    | { kind: 'ensemble'; characterIds: CharacterId[]; costumeIds?: CostumeId[] };
   views: Partial<Record<VisualView, AssetId[]>>;
   invariants: VisualInvariant[];
   /** Transparent/keyed avatar Plate can place directly as a sticker. */
@@ -329,6 +351,10 @@ export interface Take {
   /** Ranges FrameForge marked usable, in ms from take start. */
   selectedRanges?: { startMs: number; endMs: number; note?: string }[];
   rejectedRanges?: { startMs: number; endMs: number; reason?: string }[];
+  /** FrameForge's audio-extraction output — a separate Asset per stem/pass. */
+  extractedAudio?: AssetId[];
+  /** Free-form inspection notes, not tied to a specific range. */
+  notes?: string;
   risks?: string[];
   request?: GenerationRequest;
   provenance: Provenance;

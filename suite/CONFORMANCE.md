@@ -151,6 +151,68 @@ It is nonetheless a sixth shape. Migration path:
 Not urgent — the app is the only reader today — but it must land before a second
 engine reads world rules, or the divergence becomes load-bearing.
 
+## Finding 10 — Conformance against the v1.1 suite map (grade A)
+
+**Audited**: 2026-09-29, against `reference/HOLLYWOOD_BY_HG_SUITE_MAP_v1-1.md`
+(the 16-slide source deck, fetched verbatim). This is the authoritative
+statement of what each department is for; everything below is `schema/`
+measured against it.
+
+**Already conformant, no change needed:**
+
+- The BUILD LAW bullets on slide 02 match `ARCHITECTURE.md`'s law table
+  exactly (VCO owns truth, EDNA owns visual canon, Plate owns the frame,
+  Shot owns content+Takes, Slot owns time, Board owns sequence+timing,
+  models are replaceable vendors).
+- Script → Board's acid test ("Open in Plate must already know who, what and
+  where") is the same claim as `ARCHITECTURE.md`'s Shot/Slot section, and the
+  1:1 default with permanent separation is exactly what `Shot` and
+  `BoardSlot` already enforce by having disjoint fields.
+- Take Registry's rule — "A Take belongs to the Shot, not the Slot... Reusing
+  a Shot in multiple Slots must never duplicate Take history" — is
+  `slot.take_matches_shot`, proven by self-check cases 1–3.
+- Delivery/QC's list (runtime/tolerance, aspect ratio, resolution, fps,
+  loudness, true peak, color space, codec, audio layout, stems, captions,
+  titles, slate) matches `DeliverySpec` field-for-field; "prefer deterministic
+  checks... distinguish warnings from blockers" is `runDeliveryChecks()`.
+- FrameForge's "never own movie sequence order or become another Board" is
+  the same law that produced the `slot.no_overlap` invariant in the first
+  place — the deck restates the reason for a rule already enforced.
+
+**Gaps closed this pass (additive, backward-compatible):**
+
+1. **Ensemble/reference canon had no home.** The title slide names three canon
+   pillars — SET/LOCATION CANON, CHARACTER, ENSEMBLE/REFERENCE — but
+   `VisualPackage.subject` only had `character | place | prop | style`.
+   Added `{ kind: 'ensemble'; characterIds; costumeIds? }`: a multi-subject
+   staging reference that checks what a solo portrait can't (relative scale,
+   color harmony, silhouette separation across characters in one frame). It
+   proposes cross-subject invariants only — it is not a substitute for any
+   subject's own canon package.
+2. **EDNA's category list was wider than the schema's.** Slide 04 lists
+   "characters, costumes, places, sets, props, vehicles, creatures and
+   style" — `vehicle` and `creature` had no home. Rather than add two more
+   near-identical entities (the exact failure mode in Finding 1), `Prop`
+   gained an optional `category: 'prop' | 'vehicle' | 'creature' |
+   'set_dressing'` tag. Same fields, same invariants, no new shape.
+3. **FrameForge's named outputs weren't all represented.** Slide 08 lists
+   "audio extraction and notes" alongside range marking. `Take` had
+   `selectedRanges`/`rejectedRanges` but no top-level audio output or note
+   field. Added `Take.extractedAudio?: AssetId[]` and `Take.notes?: string`.
+
+**Open question, deliberately not decided here:**
+
+- Slide 04 separates **"places, sets"** as distinct EDNA categories, but
+  never defines the relationship. The likely real-production meaning — a
+  Place is the location, a Set is a specific dressed/lit instance of it for
+  one scene, so dressing can legitimately change between scenes at the same
+  Place — is a materially different modeling choice (it implies a new
+  parent/child relationship, not just a tag) from the Prop-category fix
+  above. Guessing it into the schema risked exactly the kind of
+  under-specified shape this audit exists to catch. Left as `Place` only;
+  flag it if set-dressing continuity across scenes at one location becomes
+  a real requirement.
+
 ## Summary
 
 | Finding | Severity | Status |
@@ -164,3 +226,4 @@ engine reads world rules, or the divergence becomes load-bearing.
 | 7. CINEMA output contract | — | Adopt, minus its own cartridge |
 | 8. Scout evidence grading | — | Adopted as `EvidenceGrade` |
 | 9. App `WorldBible` shim | Accepted | Migration path documented |
+| 10. v1.1 suite map conformance | — | Mostly conformant; 3 gaps closed additively; 1 open question flagged |
