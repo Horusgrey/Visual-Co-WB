@@ -5,6 +5,22 @@ export interface StyleSeed {
   prompt: string;
 }
 
+// Project-level production bible. Field names are snake_case on purpose: they
+// match the import cartridge wire format (vault/*/cartridge/*.visualco.json)
+// so ingested canvases need no translation layer.
+export interface WorldBible {
+  project_id?: string;
+  title?: string;
+  tone?: string;
+  visual_style?: string;
+  location_rules?: string;
+  time_period?: string;
+  context?: string;
+  aesthetic_locks?: string;
+  negative_prompt?: string; // forbidden-drift rules
+  locked?: boolean; // false disables injection without discarding the data
+}
+
 export interface Scene {
   id: string;
   prompt: string;

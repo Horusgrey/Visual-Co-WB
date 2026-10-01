@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import JSZip from 'jszip';
-import type { StyleSeed, Scene, Character, ScriptLine } from '../types';
+import type { StyleSeed, Scene, Character, ScriptLine, WorldBible } from '../types';
 import Modal from './common/Modal';
 import Icon from './common/Icon';
 import Spinner from './common/Spinner';
@@ -16,6 +16,7 @@ interface ExportModalProps {
     characters: Character[];
     script: ScriptLine[];
     styleSeedHistory: StyleSeed[];
+    worldBible?: WorldBible | null;
   };
 }
 

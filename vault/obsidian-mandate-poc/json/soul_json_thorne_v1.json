@@ -1,0 +1,18 @@
+{
+  "schema": "vco.soul/v1",
+  "id": "CHAR-01-THORNE",
+  "version": "v1.0",
+  "status": "LOCKED",
+  "source_canvas": "../canvases/02_Character_Bible_THORNE.md",
+  "ingestion_target": "VCO Script Tab / Context Engine",
+  "name": "Chancellor Elias Thorne",
+  "role": "The Cornered Incumbent",
+  "voice": {
+    "register": "Low, glacial, painfully precise.",
+    "volume_rule": "He never raises his voice.",
+    "tactic": "Uses silence and long pauses as weapons to force others to speak first."
+  },
+  "brief_bio": "Architect of the current District borders. Believes absolute order is a moral imperative. He is slowly losing his grip on the military council but refuses to show weakness.",
+  "core_drive": "Protect the structural integrity of his legacy at all costs.",
+  "emotional_posture": "Rigid superiority masking deep, existential dread."
+}

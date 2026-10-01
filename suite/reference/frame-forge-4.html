@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRAME FORGE — post-production sequencer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08080c; --panel:#111116; --panel-2:#17171d;
+    --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16);
+    --text:#e9e9ee; --text-dim:#8c8c98; --text-faint:#54545e;
+    --a:#5b8cff; --b:#a855f7; --c:#ec4899; --gold:#facc15; --danger:#f87171;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--text);}
+  body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;}
+  .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;}
+  a,button,input,select,textarea{font-family:inherit;color:inherit;}
+  :focus-visible{outline:2px solid var(--a);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important;}}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(8,8,12,.88);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;margin-right:6px;}
+  .badge{width:36px;height:36px;border-radius:10px;flex:none;
+    background:linear-gradient(135deg,var(--a),var(--b) 55%,var(--c));
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;}
+  .brand h1{font-size:14px;margin:0;font-weight:700;letter-spacing:.02em;}
+  .brand p{margin:1px 0 0;font-size:9.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.09em;font-family:'JetBrains Mono',monospace;}
+  .spacer{flex:1;}
+  .group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+  .btn{appearance:none;border:1px solid var(--line-2);background:var(--panel-2);color:var(--text);
+    padding:9px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;}
+  .btn:hover{border-color:var(--a);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.primary{background:linear-gradient(135deg,var(--a),var(--b));border:none;color:#fff;}
+  .btn.gold{border-color:rgba(250,204,21,.35);color:var(--gold);}
+  .chipbtn{border:1px solid var(--line-2);background:var(--panel-2);color:var(--text-dim);
+    border-radius:8px;padding:6px 9px;font-size:11.5px;cursor:pointer;font-family:'JetBrains Mono',monospace;}
+  .chipbtn:hover{border-color:var(--a);color:var(--text);}
+  .numfield{width:52px;background:var(--panel-2);border:1px solid var(--line-2);color:var(--text);
+    border-radius:8px;padding:7px 6px;font-size:12px;text-align:center;}
+
+  /* ---------- status line ---------- */
+  .statusline{max-width:1180px;margin:14px auto 0;padding:0 18px;font-size:11px;color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;}
+
+  /* ---------- rows ---------- */
+  main{max-width:1180px;margin:0 auto;padding:14px 18px 40px;}
+  .rows{display:flex;flex-direction:column;}
+  .row{display:grid;grid-template-columns:52px 176px 1.3fr 1fr 1fr 118px;gap:14px;
+    padding:18px 4px;border-bottom:1px solid var(--line);position:relative;}
+  .row.dragging{opacity:.35;}
+  .row.over{outline:1px dashed var(--a);outline-offset:-2px;border-radius:10px;}
+
+  .rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:2px;position:relative;}
+  .rail::after{content:'';position:absolute;left:50%;top:38px;bottom:-19px;width:2px;
+    background:var(--line-2);transform:translateX(-50%);}
+  .row:last-child .rail::after{display:none;}
+  .handle{cursor:grab;color:var(--text-faint);font-size:13px;letter-spacing:2px;user-select:none;}
+  .idx{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:3px 6px;}
+
+  .thumb{position:relative;width:176px;height:99px;border-radius:12px;overflow:hidden;
+    background:var(--panel-2);border:1px solid var(--line);cursor:pointer;flex:none;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;text-align:center;padding:0 10px;}
+  .thumb-hover{position:absolute;inset:0;background:rgba(8,8,12,.72);display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:600;opacity:0;transition:.15s;text-align:center;}
+  .thumb:hover .thumb-hover{opacity:1;}
+
+  .cell label{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--text-faint);margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+  .cell textarea{width:100%;min-height:74px;resize:vertical;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:10px;color:var(--text);padding:9px 10px;
+    font-family:inherit;font-size:12.5px;line-height:1.45;}
+  .cell textarea:focus{outline:none;border-color:var(--a);}
+
+  .audio-row{display:flex;gap:8px;}
+  select.audio-mode{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;}
+  .mini{border:1px solid var(--line-2);background:var(--panel-2);color:var(--text);border-radius:8px;
+    padding:6px 10px;font-size:12px;cursor:pointer;flex:none;}
+  .mini:hover{border-color:var(--a);}
+  .mini.danger{color:var(--danger);border-color:rgba(248,113,113,.35);}
+  .audio-detail{margin-top:7px;font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .dim{color:var(--text-faint);}
+
+  .fx-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{border:1px solid var(--line-2);background:var(--panel-2);color:var(--text-dim);
+    border-radius:999px;padding:5px 10px;font-size:10.5px;cursor:pointer;}
+  .chip.on{background:linear-gradient(135deg,var(--a),var(--b));border-color:transparent;color:#fff;}
+  .fx-custom{margin-top:8px;width:100%;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:8px;color:var(--text);padding:7px 8px;font-size:11.5px;}
+  .fx-custom-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+  .tag{font-size:10px;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);
+    color:var(--gold);padding:3px 8px;border-radius:999px;font-family:'JetBrains Mono',monospace;}
+  .tag b{cursor:pointer;margin-left:5px;font-weight:400;opacity:.7;}
+
+  .meta{display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+  .dur-row{display:flex;align-items:center;gap:6px;}
+  .dur-input{width:60px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:6px 7px;font-size:11.5px;}
+  .dur-row span{font-size:10.5px;color:var(--text-faint);}
+
+  /* ---------- bottom bar ---------- */
+  .bottombar{position:sticky;bottom:0;z-index:40;background:rgba(8,8,12,.92);backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);padding:14px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+  #previewCanvas{width:180px;height:101px;border-radius:10px;border:1px solid var(--line);background:#000;flex:none;}
+  .frameInd{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);min-width:52px;}
+
+  /* ---------- toast ---------- */
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);background:var(--panel-2);
+    border:1px solid var(--line-2);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12px;
+    opacity:0;pointer-events:none;transition:.2s;z-index:200;max-width:86vw;text-align:center;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  @media (max-width:860px){
+    .row{grid-template-columns:1fr;gap:10px;padding:16px 2px;}
+    .rail{flex-direction:row;justify-content:flex-start;padding-top:0;}
+    .rail::after{display:none;}
+    .thumb{width:100%;height:180px;}
+    .bottombar{justify-content:center;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="badge">FF</div>
+      <div>
+        <h1>FRAME FORGE</h1>
+        <p>post-production sequencer · vcs-15 handoff ready</p>
+      </div>
+    </div>
+
+    <div class="group">
+      <button class="btn primary" id="uploadVideoBtn">⬆ Upload video</button>
+      <input type="file" id="videoInput" accept="video/*" hidden>
+    </div>
+
+    <div class="group">
+      <span class="mono" style="font-size:11px;color:var(--text-faint);">frames</span>
+      <input type="number" id="rowCount" class="numfield" min="1" max="60" value="8">
+      <button class="chipbtn" data-n="4">4</button>
+      <button class="chipbtn" data-n="8">8</button>
+      <button class="chipbtn" data-n="12">12</button>
+      <button class="chipbtn" data-n="16">16</button>
+      <button class="btn" id="addRowBtn">+ Add frame</button>
+    </div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <div class="statusline mono" id="statusLine">8 frames</div>
+
+  <main>
+    <div class="rows" id="rows"></div>
+  </main>
+
+  <div class="bottombar">
+    <canvas id="previewCanvas" width="960" height="540"></canvas>
+    <button class="btn" id="playBtn">▶ Play</button>
+    <span class="frameInd mono" id="frameIndicator">— / —</span>
+    <div class="spacer"></div>
+    <button class="btn gold" id="exportGifBtn">⬇ GIF</button>
+    <button class="btn gold" id="exportVideoBtn">⬇ Video (WebM)</button>
+    <button class="btn gold" id="exportBundleBtn">⬇ Handoff bundle (.zip)</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- hidden working elements -->
+  <video id="srcVideo" muted playsinline style="display:none"></video>
+  <canvas id="workCanvas" style="display:none"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+  // =========================================================================
+  // FRAME FORGE
+  // A row = one frame in the sequence: image, description, audio, fx, duration.
+  // Upload a video and it gets sliced into however many rows you've set;
+  // upload/replace any single frame afterward without touching the rest.
+  // Exports: GIF (visual), WebM (video + mixed audio), or a .zip handoff bundle
+  // shaped like the VCS-15 / GMAPz cut format so it drops straight into that
+  // pipeline (cut.json + frames/ + a vcs15_handoff block).
+  // =========================================================================
+
+  const $ = id => document.getElementById(id);
+
+  const FX_PRESETS = [
+    {key:'bw',      label:'B&W'},
+    {key:'sepia',   label:'Sepia'},
+    {key:'warm',    label:'Warm'},
+    {key:'cool',    label:'Cool'},
+    {key:'blur',    label:'Soft blur'},
+    {key:'grain',   label:'Grain'},
+    {key:'vignette',label:'Vignette'},
+    {key:'glow',    label:'Glow'},
+    {key:'highcon', label:'High contrast'},
+    {key:'freeze',  label:'Freeze'} // semantic tag only — no visual filter
+  ];
+  const FILTER_MAP = {
+    bw:'grayscale(1)',
+    sepia:'sepia(.85)',
+    warm:'saturate(1.35) hue-rotate(-6deg) brightness(1.03)',
+    cool:'saturate(1.15) hue-rotate(8deg) brightness(.98)',
+    blur:'blur(2.5px)',
+    glow:'brightness(1.12) contrast(.92)',
+    highcon:'contrast(1.35) saturate(1.1)'
+  };
+
+  // ---------------------------------------------------------------- state --
+  let rows = [];
+  let nextId = 1;
+  let sharedAudioBuffer = null;   // decoded once from an uploaded source video
+  let sharedAudioDuration = 0;
+  let audioCtx = null;
+  let playing = false;
+  let busy = false;               // guards exports from overlapping each other
+  let dragSrcIndex = null;
+
+  function ensureAudioCtx(){
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function makeRow(partial){
+    return Object.assign({
+      id: nextId++,
+      img: null,        // dataURL
+      _imgEl: null,      // cached <img> once decoded, so playback/export don't re-decode every frame
+      desc: '',
+      fx: [],
+      duration: 400,     // ms this frame holds for
+      audio: {mode:'none', start:0, end:0, name:null, buffer:null}
+    }, partial);
+  }
+
+  function initRows(n){
+    rows = [];
+    for(let i=0;i<n;i++) rows.push(makeRow());
+    render();
+  }
+
+  function setFrameCount(n){
+    n = clamp(Math.round(n)||rows.length, 1, 60);
+    if(n > rows.length){ while(rows.length < n) rows.push(makeRow()); }
+    else if(n < rows.length){ rows.length = n; }
+    render();
+  }
+
+  // --------------------------------------------------------------- render --
+  function render(){
+    const wrap = $('rows');
+    wrap.innerHTML = '';
+    rows.forEach((r,i) => wrap.appendChild(rowEl(r,i)));
+    $('rowCount').value = rows.length;
+    updateStatusLine();
+  }
+
+  function updateStatusLine(){
+    const withImg   = rows.filter(r=>r.img).length;
+    const withAudio = rows.filter(r=>r.audio.mode!=='none').length;
+    const withFx    = rows.filter(r=>r.fx.length).length;
+    $('statusLine').textContent =
+      `${rows.length} frame${rows.length===1?'':'s'} · ${withImg} filled · ${withAudio} with audio · ${withFx} with fx`;
+  }
+
+  function rowEl(r,i){
+    const el = document.createElement('div');
+    el.className = 'row';
+    el.draggable = true;
+
+    el.ondragstart = e => { dragSrcIndex = i; el.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; };
+    el.ondragend   = () => el.classList.remove('dragging');
+    el.ondragover  = e => { e.preventDefault(); el.classList.add('over'); };
+    el.ondragleave = () => el.classList.remove('over');
+    el.ondrop      = e => { e.preventDefault(); el.classList.remove('over'); reorder(dragSrcIndex, i); };
+
+    el.innerHTML = `
+      <div class="rail">
+        <div class="handle" title="Drag to reorder">⋮⋮</div>
+        <div class="idx">${String(i+1).padStart(2,'0')}</div>
+      </div>
+
+      <div class="thumb" data-role="thumb">
+        ${r.img ? `<img src="${r.img}">` : `<div class="thumb-empty">+ upload frame</div>`}
+        <div class="thumb-hover">Upload / swap</div>
+        <input type="file" accept="image/*" class="thumb-input" hidden>
+      </div>
+
+      <div class="cell desc">
+        <label>Description</label>
+        <textarea placeholder="What happens in this frame…">${escapeHtml(r.desc)}</textarea>
+      </div>
+
+      <div class="cell audio">
+        <label>Audio</label>
+        <div class="audio-row">
+          <select class="audio-mode">
+            <option value="none" ${r.audio.mode==='none'?'selected':''}>No audio</option>
+            <option value="extracted" ${r.audio.mode==='extracted'?'selected':''}>From source video</option>
+            <option value="custom" ${r.audio.mode==='custom'?'selected':''}>Upload clip</option>
+          </select>
+          <button class="mini play-audio" title="Preview this frame's audio">▶</button>
+        </div>
+        <div class="audio-detail"></div>
+        <input type="file" accept="audio/*" class="audio-input" hidden>
+      </div>
+
+      <div class="cell fx">
+        <label>Fx</label>
+        <div class="fx-chips">
+          ${FX_PRESETS.map(f=>`<button class="chip ${r.fx.includes(f.key)?'on':''}" data-fx="${f.key}">${f.label}</button>`).join('')}
+        </div>
+        <input class="fx-custom" placeholder="+ custom tag, press enter">
+        <div class="fx-custom-list">
+          ${r.fx.filter(f=>!FX_PRESETS.some(p=>p.key===f)).map(f=>`<span class="tag">${escapeHtml(f)} <b data-rmtag="${escapeHtml(f)}">×</b></span>`).join('')}
+        </div>
+      </div>
+
+      <div class="cell meta">
+        <label>Hold</label>
+        <div class="dur-row">
+          <input type="number" class="dur-input" min="40" step="20" value="${r.duration}">
+          <span>ms</span>
+        </div>
+        <button class="mini danger del-row">Delete</button>
+      </div>
+    `;
+
+    wireRow(el, r, i);
+    return el;
+  }
+
+  // ------------------------------------------------------------ row wiring --
+  function wireRow(el, r, i){
+    // frame image
+    const thumb = el.querySelector('[data-role="thumb"]');
+    const thumbInput = el.querySelector('.thumb-input');
+    thumb.onclick = () => thumbInput.click();
+    thumbInput.onchange = e => {
+      const f = e.target.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => setRowImage(r, el, reader.result);
+      reader.readAsDataURL(f);
+    };
+
+    // description — mutate state only, never re-render (would break typing)
+    el.querySelector('textarea').oninput = e => { r.desc = e.target.value; };
+
+    // audio
+    const audioSel = el.querySelector('.audio-mode');
+    const audioInput = el.querySelector('.audio-input');
+    updateAudioDetail(el, r);
+    audioSel.onchange = () => {
+      r.audio.mode = audioSel.value;
+      if(audioSel.value==='custom' && !r.audio.buffer) audioInput.click();
+      updateAudioDetail(el, r);
+      updateStatusLine();
+    };
+    audioInput.onchange = async e => {
+      const f = e.target.files[0]; if(!f) return;
+      toast('Decoding '+f.name+'…');
+      try{
+        const buf = await f.arrayBuffer();
+        const decoded = await ensureAudioCtx().decodeAudioData(buf);
+        r.audio.buffer = decoded; r.audio.name = f.name; r.audio.mode = 'custom';
+        updateAudioDetail(el, r); updateStatusLine();
+        toast('Audio attached ✓');
+      }catch(err){ console.warn(err); toast("Couldn't decode that audio file"); }
+    };
+    el.addEventListener('click', e => {
+      if(e.target.classList.contains('swap-audio') || e.target.classList.contains('upload-audio')) audioInput.click();
+    });
+    el.querySelector('.play-audio').onclick = () => previewRowAudio(r);
+
+    // fx chips
+    el.querySelectorAll('.chip').forEach(chip => {
+      chip.onclick = () => {
+        const key = chip.dataset.fx;
+        const idx = r.fx.indexOf(key);
+        if(idx>=0){ r.fx.splice(idx,1); chip.classList.remove('on'); }
+        else { r.fx.push(key); chip.classList.add('on'); }
+        updateStatusLine();
+      };
+    });
+    const fxCustom = el.querySelector('.fx-custom');
+    fxCustom.onkeydown = e => {
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const v = fxCustom.value.trim();
+        if(v && !r.fx.includes(v)){ r.fx.push(v); addCustomTagChip(el, r, v); updateStatusLine(); }
+        fxCustom.value = '';
+      }
+    };
+    el.querySelectorAll('.fx-custom-list b[data-rmtag]').forEach(b => {
+      const v = b.dataset.rmtag;
+      b.onclick = () => { const idx=r.fx.indexOf(v); if(idx>=0) r.fx.splice(idx,1); b.parentElement.remove(); updateStatusLine(); };
+    });
+
+    // duration + delete
+    el.querySelector('.dur-input').onchange = e => { r.duration = clamp(+e.target.value||400, 40, 8000); };
+    el.querySelector('.del-row').onclick = () => {
+      const idx = rows.indexOf(r);
+      if(idx>=0){ rows.splice(idx,1); render(); }
+    };
+  }
+
+  function addCustomTagChip(el, r, v){
+    const list = el.querySelector('.fx-custom-list');
+    const span = document.createElement('span'); span.className='tag';
+    span.innerHTML = `${escapeHtml(v)} <b>×</b>`;
+    span.querySelector('b').onclick = () => {
+      const idx = r.fx.indexOf(v); if(idx>=0) r.fx.splice(idx,1);
+      span.remove(); updateStatusLine();
+    };
+    list.appendChild(span);
+  }
+
+  function updateAudioDetail(el, r){
+    const detail = el.querySelector('.audio-detail');
+    if(r.audio.mode==='none'){
+      detail.innerHTML = `<span class="dim">No sound on this frame</span>`;
+    } else if(r.audio.mode==='extracted'){
+      detail.innerHTML = sharedAudioBuffer
+        ? `<span class="dim">${fmtTime(r.audio.start)}–${fmtTime(r.audio.end)} of source</span>`
+        : `<span class="dim">Upload a source video with audio first</span>`;
+    } else {
+      detail.innerHTML = r.audio.name
+        ? `<span class="dim">${escapeHtml(r.audio.name)}</span><button class="mini swap-audio">Change</button>`
+        : `<button class="mini upload-audio">Choose file…</button>`;
+    }
+  }
+
+  function setRowImage(r, el, dataUrl){
+    r.img = dataUrl;
+    const im = new Image();
+    im.onload = () => { r._imgEl = im; refreshThumb(el, r); updateStatusLine(); };
+    im.src = dataUrl;
+  }
+  function refreshThumb(el, r){
+    const thumb = el.querySelector('[data-role="thumb"]');
+    let img = thumb.querySelector('img');
+    if(!img){ img = document.createElement('img'); thumb.prepend(img); thumb.querySelector('.thumb-empty')?.remove(); }
+    img.src = r.img;
+  }
+
+  function reorder(from, to){
+    if(from==null || to==null || from===to || from<0 || to<0) return;
+    const [m] = rows.splice(from,1);
+    rows.splice(to,0,m);
+    render();
+  }
+
+  // ------------------------------------------------------- video ingestion --
+  async function handleVideoUpload(file){
+    const url = URL.createObjectURL(file);
+    const vid = $('srcVideo');
+    vid.src = url;
+    toast('Loading video…');
+    await new Promise((res,rej)=>{ vid.onloadedmetadata=res; vid.onerror=rej; });
+
+    if(!rows.length) initRows(8);
+    const n = rows.length;
+    const duration = vid.duration;
+
+    toast('Extracting '+n+' frames…');
+    const work = $('workCanvas'); work.width=640; work.height=360;
+    const wctx = work.getContext('2d');
+    const rowEls = Array.from(document.querySelectorAll('.row'));
+
+    for(let i=0;i<n;i++){
+      const t = Math.min(Math.max(duration-0.05,0), (i+0.5)/n*duration);
+      await seekTo(vid, t);
+      wctx.drawImage(vid, 0,0, work.width, work.height);
+      setRowImage(rows[i], rowEls[i], work.toDataURL('image/jpeg', 0.86));
+    }
+    toast('Frames extracted ✓');
+
+    // Best-effort audio decode. Not every container's audio track decodes via
+    // decodeAudioData — if it fails, per-frame clip upload still works fine.
+    try{
+      toast('Decoding audio…');
+      const buf = await fetch(url).then(r=>r.arrayBuffer());
+      sharedAudioBuffer = await ensureAudioCtx().decodeAudioData(buf);
+      sharedAudioDuration = sharedAudioBuffer.duration;
+      rows.forEach((r,i)=>{
+        if(r.audio.mode==='none'){
+          r.audio.mode='extracted';
+          r.audio.start=(i/n)*sharedAudioDuration;
+          r.audio.end=((i+1)/n)*sharedAudioDuration;
+        }
+      });
+      render();
+      toast('Audio extracted ✓ — assigned per frame');
+    }catch(err){
+      console.warn(err);
+      toast("No audio track detected (or it couldn't be decoded) — upload clips per frame if you need sound.");
+    }
+  }
+  function seekTo(vid, t){
+    return new Promise(res=>{
+      const done = () => { vid.removeEventListener('seeked', done); res(); };
+      vid.addEventListener('seeked', done);
+      vid.currentTime = t;
+    });
+  }
+
+  // ------------------------------------------------------------ playback --
+  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+  function ensureImageReady(r){
+    return new Promise(res=>{
+      if(!r.img){ res(); return; }
+      if(r._imgEl && r._imgEl.complete){ res(); return; }
+      const im = new Image(); im.onload=()=>{ r._imgEl=im; res(); }; im.src=r.img;
+    });
+  }
+
+  function drawImageCover(ctx, img, w, h){
+    const scale = Math.max(w/img.width, h/img.height);
+    const dw = img.width*scale, dh = img.height*scale;
+    ctx.drawImage(img, (w-dw)/2, (h-dh)/2, dw, dh);
+  }
+
+  function drawFrameToCanvas(ctx, r, w, h){
+    ctx.save();
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+    const filterParts = r.fx.map(f=>FILTER_MAP[f]).filter(Boolean);
+    ctx.filter = filterParts.length ? filterParts.join(' ') : 'none';
+    if(r.img && r._imgEl){
+      drawImageCover(ctx, r._imgEl, w, h);
+    } else {
+      ctx.filter='none';
+      ctx.fillStyle='#1a1a20'; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='#54545e'; ctx.font='600 16px "JetBrains Mono",monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('NO FRAME', w/2, h/2);
+    }
+    ctx.filter='none';
+    if(r.fx.includes('vignette')){
+      const g = ctx.createRadialGradient(w/2,h/2,h*0.25, w/2,h/2,h*0.75);
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.55)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+    }
+    if(r.fx.includes('grain')){
+      ctx.fillStyle='rgba(255,255,255,.05)';
+      for(let k=0;k<220;k++) ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+    }
+    ctx.restore();
+  }
+
+  function bufferFor(r){
+    if(r.audio.mode==='extracted' && sharedAudioBuffer) return {buf:sharedAudioBuffer, start:r.audio.start, end:r.audio.end};
+    if(r.audio.mode==='custom' && r.audio.buffer) return {buf:r.audio.buffer, start:0, end:r.audio.buffer.duration};
+    return null;
+  }
+  async function previewRowAudio(r){
+    const ctx = ensureAudioCtx();
+    if(ctx.state==='suspended') await ctx.resume();
+    const b = bufferFor(r);
+    if(!b){ toast('No audio to preview yet'); return; }
+    const src = ctx.createBufferSource(); src.buffer=b.buf; src.connect(ctx.destination);
+    src.start(0, b.start, Math.max(0.05, b.end-b.start));
+  }
+  function playRowAudioInto(r, dest){
+    const b = bufferFor(r); if(!b) return;
+    const ctx = ensureAudioCtx();
+    const src = ctx.createBufferSource(); src.buffer=b.buf; src.connect(dest);
+    const len = Math.max(0.05, Math.min(b.end-b.start, r.duration/1000 + 0.3));
+    src.start(0, b.start, len);
+  }
+
+  async function playSequence(){
+    if(playing || !rows.some(r=>r.img)){ if(!rows.some(r=>r.img)) toast('Add at least one frame first'); return; }
+    playing = true; $('playBtn').textContent = '⏸ Pause';
+    const canvas = $('previewCanvas'); const ctx = canvas.getContext('2d');
+    const ac = ensureAudioCtx(); if(ac.state==='suspended') await ac.resume();
+    for(let i=0;i<rows.length;i++){
+      if(!playing) break;
+      const r = rows[i];
+      await ensureImageReady(r);
+      drawFrameToCanvas(ctx, r, canvas.width, canvas.height);
+      $('frameIndicator').textContent = (i+1)+' / '+rows.length;
+      playRowAudioInto(r, ac.destination);
+      await sleep(r.duration);
+    }
+    playing = false; $('playBtn').textContent = '▶ Play';
+  }
+
+  // -------------------------------------------------------------- exports --
+  function downloadBlob(blob, name){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }
+
+  let _gifWorkerUrl = null;
+  async function getGifWorkerUrl(){
+    // Cross-origin Worker() construction is blocked in most browsers even with
+    // CORS headers, so the worker script is fetched and wrapped in a same-origin
+    // blob: URL instead of pointing gif.js straight at the cdnjs URL.
+    if(_gifWorkerUrl) return _gifWorkerUrl;
+    const text = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js').then(r=>r.text());
+    _gifWorkerUrl = URL.createObjectURL(new Blob([text], {type:'application/javascript'}));
+    return _gifWorkerUrl;
+  }
+
+  function withBusy(fn){
+    return async (...args) => {
+      if(busy){ toast('Still working on the last export — one at a time'); return; }
+      busy = true;
+      try{ await fn(...args); }
+      catch(err){ console.error(err); toast('Something went wrong — see console for details'); }
+      finally{ busy = false; }
+    };
+  }
+
+  const exportGif = withBusy(async function(){
+    if(!rows.some(r=>r.img)){ toast('Add at least one frame first'); return; }
+    if(typeof GIF==='undefined'){ toast('GIF library failed to load — check your connection and retry'); return; }
+    toast('Building GIF…');
+    const w=480,h=270;
+    const work=document.createElement('canvas'); work.width=w; work.height=h;
+    const wctx=work.getContext('2d');
+    const gif = new GIF({workers:2, quality:10, width:w, height:h, workerScript: await getGifWorkerUrl()});
+    for(const r of rows){
+      if(!r.img) continue;
+      await ensureImageReady(r);
+      drawFrameToCanvas(wctx, r, w, h);
+      gif.addFrame(wctx, {copy:true, delay:r.duration});
+    }
+    await new Promise(res=>{
+      gif.on('finished', blob => { downloadBlob(blob,'frameforge.gif'); toast('GIF ready ✓'); res(); });
+      gif.render();
+    });
+  });
+
+  const exportVideo = withBusy(async function(){
+    if(!rows.some(r=>r.img)){ toast('Add at least one frame first'); return; }
+    const canvas = $('previewCanvas'); const ctx = canvas.getContext('2d');
+    const ac = ensureAudioCtx(); if(ac.state==='suspended') await ac.resume();
+    const dest = ac.createMediaStreamDestination();
+    const vStream = canvas.captureStream(30);
+    const combined = new MediaStream([...vStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+    let mime = 'video/webm;codecs=vp9,opus';
+    if(!window.MediaRecorder || !MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+    const rec = new MediaRecorder(combined, {mimeType:mime});
+    const chunks = [];
+    rec.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => rec.onstop = res);
+    rec.start();
+    toast('Recording sequence…');
+    for(const r of rows){
+      await ensureImageReady(r);
+      drawFrameToCanvas(ctx, r, canvas.width, canvas.height);
+      playRowAudioInto(r, dest);
+      await sleep(r.duration);
+    }
+    rec.stop();
+    await stopped;
+    downloadBlob(new Blob(chunks,{type:'video/webm'}), 'frameforge.webm');
+    toast('Video ready ✓');
+  });
+
+  const exportBundle = withBusy(async function(){
+    if(!rows.some(r=>r.img)){ toast('Add at least one frame first'); return; }
+    if(typeof JSZip==='undefined'){ toast('Zip library failed to load — check your connection and retry'); return; }
+    toast('Packing handoff bundle…');
+    const zip = new JSZip();
+    rows.forEach((r,i)=>{
+      if(r.img) zip.file(`frames/frame_${String(i+1).padStart(2,'0')}.jpg`, r.img.split(',')[1], {base64:true});
+    });
+    const cut = {
+      spec: 'frameforge.cut.v1',
+      exported_at: new Date().toISOString(),
+      frame_count: rows.length,
+      frames: rows.map((r,i)=>({
+        n: i+1,
+        frame: r.img ? `frames/frame_${String(i+1).padStart(2,'0')}.jpg` : null,
+        duration_ms: r.duration,
+        description: r.desc || '',
+        fx: r.fx,
+        audio: r.audio.mode==='none' ? null : {
+          mode: r.audio.mode,
+          start: r.audio.mode==='extracted' ? +r.audio.start.toFixed(2) : 0,
+          end:   r.audio.mode==='extracted' ? +r.audio.end.toFixed(2)   : (r.audio.buffer ? +r.audio.buffer.duration.toFixed(2) : 0),
+          name:  r.audio.name || null
+        }
+      })),
+      // Same shape as the VCS-15 FORGE / GMAPz cut handoff, so this bundle can
+      // feed straight into VCS-15 continuity analysis or a NEXT continuation.
+      vcs15_handoff: {
+        project_id: 'FRAMEFORGE',
+        clip_type: 'post_sequence',
+        status: 'edited',
+        style_lock: {notes: 'fx[] per frame = style/continuity tags — anything outside that list on a later pass is drift'},
+        continuity_handoff: 'ready_for_vcs15_next',
+        next_sequence_handoff: {note: 'hand the last frame + its fx state to VCS-15 NEXT for continuation'}
+      }
+    };
+    zip.file('cut.json', JSON.stringify(cut, null, 2));
+    zip.file('README.txt',
+`FRAME FORGE — post-production handoff
+${rows.length} frame${rows.length===1?'':'s'} · exported ${new Date().toISOString()}
+
+frames/   numbered frame images in sequence order.
+cut.json  per-frame description, fx tags, audio range, and a
+          vcs15_handoff block so this drops straight into VCS-15
+          continuity analysis or an engine-specific prompt pass.
+`);
+    const blob = await zip.generateAsync({type:'blob'});
+    downloadBlob(blob, 'frameforge_bundle.zip');
+    toast('Bundle ready ✓');
+  });
+
+  // --------------------------------------------------------------- utils --
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function fmtTime(s){ if(s==null||isNaN(s)) return '0:00'; const m=Math.floor(s/60), sec=Math.floor(s%60); return m+':'+String(sec).padStart(2,'0'); }
+
+  let _toastTimer = null;
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(_toastTimer); _toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+  }
+
+  // ---------------------------------------------------------------- init --
+  document.addEventListener('DOMContentLoaded', () => {
+    initRows(8);
+
+    $('uploadVideoBtn').onclick = () => $('videoInput').click();
+    $('videoInput').onchange = e => { const f=e.target.files[0]; if(f) handleVideoUpload(f); };
+
+    $('addRowBtn').onclick = () => { rows.push(makeRow()); render(); };
+    $('rowCount').onchange = () => setFrameCount(+$('rowCount').value);
+    document.querySelectorAll('.chipbtn[data-n]').forEach(b=>{
+      b.onclick = () => setFrameCount(+b.dataset.n);
+    });
+
+    $('playBtn').onclick = () => {
+      if(playing){ playing=false; $('playBtn').textContent='▶ Play'; }
+      else playSequence();
+    };
+
+    $('exportGifBtn').onclick = exportGif;
+    $('exportVideoBtn').onclick = exportVideo;
+    $('exportBundleBtn').onclick = exportBundle;
+  });
+  </script>
+</body>
+</html>

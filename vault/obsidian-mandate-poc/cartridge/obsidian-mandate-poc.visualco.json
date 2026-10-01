@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "project_id": "VCO-POC-042126-01",
+    "title": "The Obsidian Mandate (POC Scene)",
+    "source": "vault/obsidian-mandate-poc/canvases",
+    "note": "Import via Home > Import. The worldBible key is consumed by the engine: its locks are injected into every image generation (see services/worldLock.ts) and are editable under Scenes > Production Bible."
+  },
+  "worldBible": {
+    "tone": "Tense, whispered paranoia, claustrophobic despite vast spaces.",
+    "visual_style": "Monumental, doctrinal, militarized elegance. Harsh geometric shadows.",
+    "location_rules": "Vaulted ceilings, massive scale, polished reflective stone floors, heavily symmetrical staging. Zero natural light.",
+    "time_period": "Unspecified Neo-Authoritarian present.",
+    "context": "A bloodless coup is happening in real-time behind closed doors. The public is entirely unaware.",
+    "aesthetic_locks": "Brutalist architecture, stark monochrome environments punctuated by singular, aggressive accent colors (deep crimson or gold).",
+    "negative_prompt": "No cyberpunk neon, no dirt/grime, no casual wear, no shaky cam, no chaotic clutter, no daylight."
+  },
+  "styleSeed": null,
+  "styleSeedHistory": [],
+  "scenes": [],
+  "characters": [
+    {
+      "id": "CHAR-01-THORNE",
+      "name": "Chancellor Elias Thorne",
+      "role": "The Cornered Incumbent",
+      "lookPrompt": "hyper-realistic cinematic portrait, older severe man, pale skin, sharp cheekbones, wearing strict charcoal military greatcoat with high stiff collar, hidden buttons, single geometric obsidian lapel pin, brutalist authoritarian elegance, harsh top-down spotlighting, monumental brutalist interior, stark monochrome with deep crimson and gold accents, zero natural light, pristine and orderly, formal dress only, 8k, Arri Alexa, pristine focus",
+      "bio": "Architect of the current District borders. Believes absolute order is a moral imperative. He is slowly losing his grip on the military council but refuses to show weakness. VOICE: low, glacial, painfully precise — he never raises his voice, and uses silence and long pauses as weapons to force others to speak first. CORE DRIVE: protect the structural integrity of his legacy at all costs. POSTURE: rigid superiority masking deep, existential dread."
+    },
+    {
+      "id": "CHAR-02-LIN",
+      "name": "Minister Vespera Lin",
+      "role": "The Cold Reformist",
+      "lookPrompt": "hyper-realistic cinematic portrait, sharp-featured woman, dark hair pulled into severe tight knot, wearing asymmetrical muted crimson silk over black, silver cuffs, no jewelry, modern authoritarian logistics uniform, cold ambient lighting, architectural shadows, monumental brutalist interior, stark monochrome with deep crimson accents, zero natural light, pristine and orderly, formal dress only, 8k, photorealistic",
+      "bio": "Rose through the logistics divisions. She doesn't care about ideology; she cares about efficiency. She has already secured the council's votes before this conversation even begins. VOICE: rapid, clinical, dismissive — speaks in bullet points and inevitable conclusions, uses data as a blunt instrument. CORE DRIVE: excise the inefficient elements of the government (meaning Thorne). POSTURE: absolute, bored certainty."
+    }
+  ],
+  "script": []
+}

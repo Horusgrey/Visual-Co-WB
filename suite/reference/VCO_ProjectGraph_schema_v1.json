@@ -1,0 +1,186 @@
+{
+  "schema_id": "hg.vco.projectgraph.v1",
+  "project_id": "HG-SUITE-SCRATCH-MAP-0926",
+  "version": "1.0.0",
+  "updated": "2026-09-26",
+  "law": {
+    "truth_owner": "VCO",
+    "visual_canon_owner": "EDNA",
+    "frame_owner": "PLATE",
+    "shot_owner": "SHOT",
+    "time_owner": "BOARDSLOT",
+    "sequence_owner": "BOARD",
+    "models": "vendors",
+    "mutations": "patches + append-only events",
+    "no_second_database": true
+  },
+  "id_convention": {
+    "pattern": "TYPE/SLUG",
+    "examples": ["CHAR/BROMAN", "COSTUME/HERO_V3", "PLACE/DIVE_BAR", "SHOT/S10_01", "SLOT/E02_S10_07"]
+  },
+  "objects": {
+    "Project": {
+      "id": "string",
+      "title": "string",
+      "status": ["scratch", "active", "locked", "delivery", "master"],
+      "world_id": "string|null",
+      "board_id": "string|null",
+      "delivery_spec_id": "string|null",
+      "created_at": "iso8601",
+      "updated_at": "iso8601"
+    },
+    "World": { "id": "string", "rules": "object", "visual_style_id": "string|null" },
+    "Character": {
+      "id": "string",
+      "name": "string",
+      "canon_status": ["candidate", "approved", "locked"],
+      "visual_package_id": "string|null",
+      "voice_profile_id": "string|null"
+    },
+    "Relationship": { "id": "string", "from_id": "string", "to_id": "string", "type": "string" },
+    "Script": { "id": "string", "project_id": "string", "version": "string", "canon_status": "string", "source_uri": "string|null" },
+    "Scene": {
+      "id": "string",
+      "script_id": "string",
+      "number": "number",
+      "heading": "string",
+      "place_id": "string|null",
+      "cast_ids": ["string"],
+      "prop_ids": ["string"],
+      "costume_map": { "character_id": "costume_id" },
+      "canon_status": "string"
+    },
+    "Place": { "id": "string", "name": "string", "visual_package_id": "string|null", "scout_capture_ids": ["string"] },
+    "Prop": { "id": "string", "name": "string", "visual_package_id": "string|null" },
+    "Costume": { "id": "string", "character_id": "string", "name": "string", "visual_package_id": "string|null" },
+    "Asset": {
+      "id": "string",
+      "kind": ["image", "video", "audio", "json", "other"],
+      "uri": "string",
+      "provider": "string|null",
+      "model": "string|null",
+      "source_ref_ids": ["string"],
+      "hash": "string|null"
+    },
+    "Shot": {
+      "id": "string",
+      "intent": "string",
+      "cast_ids": ["string"],
+      "prop_ids": ["string"],
+      "place_id": "string|null",
+      "plate_id": "string|null",
+      "motion_spec": "object|null",
+      "take_ids": ["string"]
+    },
+    "Plate": {
+      "id": "string",
+      "shot_id": "string",
+      "blocking_composite_asset_id": "string|null",
+      "master_frame_asset_id": "string|null",
+      "camera": { "lens": "string|null", "angle": "string|null", "position": "string|null" },
+      "status": ["open", "blocked", "approved"]
+    },
+    "Board": { "id": "string", "project_id": "string", "cut_schema": "cut.json.v1" },
+    "BoardScene": { "id": "string", "board_id": "string", "scene_id": "string", "order": "number" },
+    "BoardSlot": {
+      "id": "string",
+      "board_scene_id": "string",
+      "order": "number",
+      "start_time": "number",
+      "duration": "number",
+      "script_excerpt": "string|null",
+      "beat": "string|null",
+      "shot_id": "string|null",
+      "selected_take_id": "string|null",
+      "fx_cues": ["object"],
+      "audio_cues": ["object"],
+      "transition": "string|null",
+      "continuity_in_id": "string|null",
+      "continuity_out_id": "string|null",
+      "status": ["empty", "plated", "audio", "fx", "motion", "selected", "blocked"]
+    },
+    "Take": {
+      "id": "string",
+      "shot_id": "string",
+      "video_asset_id": "string|null",
+      "key_frame_asset_id": "string|null",
+      "end_frame_asset_id": "string|null",
+      "provider": "string|null",
+      "model": "string|null",
+      "request_hash": "string|null",
+      "verdict": ["unreviewed", "rejected", "maybe", "approved"]
+    },
+    "ContinuityState": {
+      "id": "string",
+      "scope": ["entering", "ending"],
+      "shot_id": "string|null",
+      "take_id": "string|null",
+      "slot_id": "string|null",
+      "visible_cast": ["object"],
+      "costume": ["object"],
+      "props": ["object"],
+      "screen_direction": "string|null",
+      "camera": "object|null",
+      "lighting": "string|null",
+      "risk_flags": ["string"],
+      "next_constraints": ["string"],
+      "evidence_asset_ids": ["string"]
+    },
+    "DeliverySpec": {
+      "id": "string",
+      "runtime_sec": "number",
+      "runtime_tolerance_sec": "number",
+      "aspect_ratio": "string",
+      "resolution": "string",
+      "fps": "number",
+      "loudness_lufs": "number|null",
+      "true_peak_db": "number|null",
+      "color_space": "string|null",
+      "codec": "string|null",
+      "audio_layout": "string|null",
+      "required_stems": ["string"],
+      "captions": "boolean",
+      "titles": "boolean",
+      "slate": "boolean"
+    }
+  },
+  "patch": {
+    "shape": {
+      "patch_id": "string",
+      "project_id": "string",
+      "actor": "string",
+      "engine": "string",
+      "op": ["create", "update", "delete", "link", "approve", "lock"],
+      "object_type": "string",
+      "object_id": "string",
+      "data": "object",
+      "created_at": "iso8601"
+    },
+    "rule": "Engines submit patches. VCO applies or rejects. No silent mutation."
+  },
+  "event": {
+    "shape": {
+      "event_id": "string",
+      "project_id": "string",
+      "patch_id": "string|null",
+      "type": "string",
+      "object_type": "string",
+      "object_id": "string",
+      "canon_change": "boolean",
+      "payload": "object",
+      "created_at": "iso8601"
+    },
+    "rule": "Canon-changing actions emit append-only events. Never rewrite history."
+  },
+  "ownership_matrix": {
+    "CINEMA": "propose actions only",
+    "VCO": "apply patches, store graph, emit events",
+    "EDNA": "visual packages + candidate images",
+    "PLATE": "blocking composite + request master frame",
+    "BOARD": "slots, timing, selected take, cut.json writer",
+    "FRAMEFORGE": "take inspection ranges",
+    "VCS": "continuity states + risk flags",
+    "MODEL_COMPILER": "generation requests, not canon",
+    "DELIVERY": "deterministic QC against DeliverySpec"
+  }
+}

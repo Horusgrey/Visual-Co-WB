@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "suite:selfcheck": "tsc suite/vco/selfcheck.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/vco/selfcheck.run.js",
+    "suite:scene06": "tsc suite/fixtures/scene06.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/fixtures/scene06.run.js",
+    "suite:superz": "tsc suite/fixtures/superzRooftop.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/fixtures/superzRooftop.run.js",
+    "deck:build": "node suite/deck/build-deck.mjs"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "@google/genai": "^1.25.0",
-    "jszip": "3.10.1"
+    "jszip": "3.10.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "pptxgenjs": "^4.0.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
