@@ -33,7 +33,9 @@ const fmt = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 export const runDeliveryChecks = (g: ProjectGraph): DeliveryReport => {
   const checks: DeliveryCheck[] = [];
-  const spec = g.project.deliverySpec;
+  // DeliverySpec is normalized (like World/Board/Lens), so a project can
+  // hold more than one over its life; deliverySpecId names the live one.
+  const spec = g.project.deliverySpecId ? g.deliverySpecs[g.project.deliverySpecId] : undefined;
   const boardId = g.project.boardId;
 
   // ── Runtime ──

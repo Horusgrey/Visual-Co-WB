@@ -19,7 +19,8 @@ const distinctShots = new Set(slots.map(s => s.shotId)).size;
 const takeCount = Object.keys(g.takes).length;
 
 console.log(`\nslots: ${slots.length}   distinct shots: ${distinctShots}   takes: ${takeCount}`);
-console.log(`runtime: ${(runtime! / 1000).toFixed(1)}s of ${(g.project.deliverySpec!.targetRuntimeMs! / 1000).toFixed(1)}s target`);
+const spec = g.deliverySpecs[g.project.deliverySpecId!];
+console.log(`runtime: ${(runtime! / 1000).toFixed(1)}s of ${(spec.targetRuntimeMs! / 1000).toFixed(1)}s target`);
 
 const report = runDeliveryChecks(g);
 g.project.deliveryReport = report;

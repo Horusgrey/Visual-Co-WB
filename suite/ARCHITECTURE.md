@@ -1,7 +1,9 @@
 # Hollywood by HG — Suite Architecture
 
 **Project ID**: HG-SUITE-SCRATCH-MAP-0926
-**Source spec**: `reference/HOLLYWOOD_BY_HG_SUITE_MAP_v1-1.md`
+**Source specs**: `reference/HOLLYWOOD_BY_HG_SUITE_MAP_v1-1.md` (the suite map),
+`reference/Plate_deep_dive_v1.md` (Plate-specific), `reference/VCO_ProjectGraph_schema_v1.json`
+(wire schema)
 
 This directory holds the canonical schema and the mechanism that enforces the
 GLOBAL BUILD LAW. It is deliberately boring: no UI, no generation, no vendor
@@ -46,9 +48,15 @@ walls — STUDIO, not TOOLBOX.*
 | No engine creates a second project database | `Engine.run()` takes `Readonly<ProjectGraph>` and returns a patch |
 | Engines return patches/events, never silent mutations | `EnginePatch`; append-only `CanonEvent` |
 
-Engines may **propose** canon. Only humans **lock** it: `applyPatch` rejects a
-`locksCanon` patch from any engine in `CANNOT_LOCK_CANON` unless the patch
-carries a human actor in its provenance. This is check 7 in the self-check.
+Engines may **propose** canon. Only humans **lock** it. This is enforced two
+ways, not one: `applyPatch` rejects a `locksCanon` patch from any engine in
+`CANNOT_LOCK_CANON` unless the patch carries a human actor in its provenance
+(self-check case 6/7) — **and**, because `locksCanon` is self-reported by the
+engine that sent the patch, a raw `update` op is refused outright if it
+touches `approval` or `canonStatus` directly. The only way to make either
+field move is the `approve`/`lock` op, and the human-actor gate fires on that
+op's presence, not on the flag (self-check cases 13–14; see `CONFORMANCE.md`
+Finding 11 for the gap this closed).
 
 ## Ownership matrix
 
@@ -59,6 +67,7 @@ believing they owned the same field. This table is the arbiter.
 |---|---|---|
 | Object identity, canon, events | VCO | everyone else |
 | World rules, forbidden drift | VCO (`World`) | EDNA, Plate |
+| Camera grammar — focal/height/distance/line/palette conventions | VCO (`Lens`) | Plate's own `CameraSetup` (one shot's instance of it) |
 | Visual canon, reference sets, drift review | EDNA | Plate, VCS |
 | Background, layer x/y/scale/rotation/flip/z, lens, angle, crop | Plate | Board, Shot |
 | `blockingComposite`, `masterFrame` | Plate | Board |
@@ -123,6 +132,26 @@ DELIVERY / QC   deterministic checks; blockers gate Final Master
 MASTER
 ```
 
+**Reverse ingestion** (existing footage in, rather than new generation out)
+runs the same engines in the opposite order:
+
+```
+EXISTING VIDEO
+   │
+   ▼
+VCS-15 BEAT INGEST   beats ──► one Shot, one Take, one ContinuityState per
+   │                            beat, one ContinuityReport (risks only where
+   │                            the beats themselves mark a boundary)
+   ▼
+BOARD REVERSE INGEST   continuity states ──► candidate BoardSlots, all
+   │                                          selecting the one ingested Take
+   ▼
+VCO   (candidate — a human reviews before any slot is treated as cut)
+```
+
+Proven end to end against a real clip in `fixtures/superzRooftop.ts` — see
+`CONFORMANCE.md` Finding 12.
+
 ## Confidence and evidence
 
 Two rules borrowed from the prototypes that got this right:
@@ -139,19 +168,32 @@ Two rules borrowed from the prototypes that got this right:
 ## Running the conformance harness
 
 ```
-npm run suite:selfcheck
+npm run suite:selfcheck   # 19 checks against synthetic fixtures
+npm run suite:scene06     # delivery gate against a worked, deliberately-failing scene
+npm run suite:superz      # end-to-end reverse ingestion against a real clip's beats
 ```
 
-14 checks covering Take ownership, Shot reuse, Slot timing exclusivity, the
-Plate master/blocking derivation rule, Character-bound FX cues, the human
-canon-lock gate, patch transactionality and event monotonicity.
+`suite:selfcheck` covers Take ownership, Shot reuse, Slot timing exclusivity,
+the Plate master/blocking derivation rule (and its `baked`-origin exception),
+costume/character matching, Character-bound FX cues, the human canon-lock
+gate on both `locksCanon` and the `approve`/`lock` ops directly, patch
+transactionality and event monotonicity.
 
-## What is deliberately not here yet
+## What is built, and what is deliberately not here yet
 
-The schema and the writer are built. The 13 engines are not. Each engine is a
-separate build against `Engine<Request>`; none of them needs to change this
-directory to exist. Start with whichever engine unblocks the user's next shot —
-the schema does not impose an order.
+Two of the thirteen named engines exist and are proven against real data, not
+just synthetic fixtures:
+
+- `engines/frameforge.ts` — `Engine<FrameForgeRequest>`.
+- `engines/vcs15BeatIngest.ts` — `Engine<VcsBeatIngestRequest>`.
+- `engines/boardReverseIngest.ts` — the one named Board capability (reverse
+  ingestion), a plain function rather than a full `Engine` since the rest of
+  Board's responsibilities (FX, audio, transitions, `cut.json` export) don't
+  exist yet — same scoping choice as `vco/delivery.ts`.
+
+The other engines are not. Each is a separate build against `Engine<Request>`;
+none of them needs to change this directory to exist. Start with whichever
+engine unblocks the user's next shot — the schema does not impose an order.
 
 The current Visual Co-Pilot app still uses its own local `WorldBible` in
 `types.ts` rather than `World` from this schema. That shim is intentional and

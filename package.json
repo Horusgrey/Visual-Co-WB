@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "suite:selfcheck": "tsc suite/vco/selfcheck.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/vco/selfcheck.run.js",
     "suite:scene06": "tsc suite/fixtures/scene06.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/fixtures/scene06.run.js",
+    "suite:superz": "tsc suite/fixtures/superzRooftop.run.ts --outDir .suite-build --module esnext --target es2022 --moduleResolution bundler --strict && node .suite-build/fixtures/superzRooftop.run.js",
     "deck:build": "node suite/deck/build-deck.mjs"
   },
   "dependencies": {

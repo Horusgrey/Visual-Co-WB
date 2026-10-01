@@ -77,11 +77,28 @@ export const checkInvariants = (g: ProjectGraph): Violation[] => {
     if (!has(g.assets, plate.background)) {
       v.push({ rule: 'plate.background_exists', detail: `${plate.id} references missing background` });
     }
-    if (plate.masterFrame && !plate.blockingComposite) {
+    // A 'baked' plate arrived pre-finished from outside the compositing
+    // pipeline — an imported still, promo art — and never had a blocking
+    // step to derive from. Only a 'composited' plate (the default) must.
+    const origin = plate.origin ?? 'composited';
+    if (plate.masterFrame && !plate.blockingComposite && origin === 'composited') {
       v.push({
         rule: 'plate.master_derives_from_blocking',
         detail: `${plate.id} has a master frame with no blocking composite to derive it from`,
       });
+    }
+    // Two people in the same suit are not interchangeable: a costume placed
+    // on a character layer must belong to that character.
+    for (const layer of plate.layers) {
+      if (layer.subject.kind === 'character' && layer.subject.costume) {
+        const costume = g.costumes[layer.subject.costume];
+        if (costume && costume.characterId !== layer.subject.id) {
+          v.push({
+            rule: 'plate.costume_matches_character',
+            detail: `${plate.id} places costume ${layer.subject.costume} (owned by ${costume.characterId}) on character ${layer.subject.id}`,
+          });
+        }
+      }
     }
   }
 
@@ -92,6 +109,23 @@ export const checkInvariants = (g: ProjectGraph): Violation[] => {
         rule: 'canon.human_approval',
         detail: `${pkg.id} is approved with no approver — engines may propose canon, only humans lock it`,
       });
+    }
+  }
+
+  // ── A Slot's continuity report, if set, must resolve, and its two states
+  //    must themselves exist — a report is only useful if what it cites does. ──
+  for (const slot of Object.values(g.boardSlots)) {
+    if (!slot.continuityReportId) continue;
+    const report = g.continuityReports[slot.continuityReportId];
+    if (!report) {
+      v.push({ rule: 'slot.continuity_report_exists', detail: `${slot.id} references missing report ${slot.continuityReportId}` });
+      continue;
+    }
+    if (!has(g.continuityStates, report.entering)) {
+      v.push({ rule: 'report.entering_state_exists', detail: `${report.id} references missing entering state ${report.entering}` });
+    }
+    if (!has(g.continuityStates, report.ending)) {
+      v.push({ rule: 'report.ending_state_exists', detail: `${report.id} references missing ending state ${report.ending}` });
     }
   }
 

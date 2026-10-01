@@ -1,7 +1,8 @@
 import { mintId } from '../schema/ids.js';
 import type {
   AssetId, BoardId, BoardSceneId, BoardSlotId, CharacterId, CostumeId,
-  PlaceId, PlateId, ProjectId, ShotId, TakeId, VisualPackageId, WorldId,
+  DeliverySpecId, LensId, PlaceId, PlateId, ProjectId, ShotId, TakeId,
+  VisualPackageId, WorldId,
 } from '../schema/ids.js';
 import type { Plate, ProjectGraph, Shot, Take } from '../schema/projectGraph.js';
 import type { Provenance } from '../schema/provenance.js';
@@ -25,6 +26,8 @@ const prov = (engine: Provenance['engine'], actor?: string): Provenance => ({
 
 const PRJ = mintId<ProjectId>('Project', 'OBSIDIAN_MANDATE');
 const WLD = mintId<WorldId>('World', 'OBSIDIAN');
+const LENS = mintId<LensId>('Lens', 'OBSIDIAN');
+const DELIVERY = mintId<DeliverySpecId>('DeliverySpec', 'MAIN');
 const THORNE = mintId<CharacterId>('Character', 'THORNE');
 const LIN = mintId<CharacterId>('Character', 'LIN');
 const COST_THORNE = mintId<CostumeId>('Costume', 'THORNE_GREATCOAT');
@@ -136,12 +139,7 @@ export const buildScene06Graph = (): ProjectGraph => {
     schemaVersion: '1.0',
     project: {
       id: PRJ, title: 'The Obsidian Mandate', stage: 'assembly',
-      worldId: WLD, boardId: BOARD,
-      deliverySpec: {
-        targetRuntimeMs: TARGET_RUNTIME_MS,
-        runtimeToleranceMs: RUNTIME_TOLERANCE_MS,
-        aspectRatio: '2.39:1', fps: 24,
-      },
+      worldId: WLD, lensId: LENS, boardId: BOARD, deliverySpecId: DELIVERY,
     },
     worlds: {
       [WLD]: {
@@ -155,9 +153,29 @@ export const buildScene06Graph = (): ProjectGraph => {
         locked: true,
       },
     },
+    lenses: {
+      [LENS]: {
+        id: LENS, projectId: PRJ,
+        focalConvention: '40mm', heightRange: 'ground to eye', distanceRange: 'MCU to wide',
+        lineDiscipline: '180, held', palette: 'monochrome, crimson/gold accent',
+        forbiddenTechniques: ['whip pan', 'handheld shake', 'drone shot'],
+        locked: true,
+      },
+    },
+    deliverySpecs: {
+      [DELIVERY]: {
+        id: DELIVERY, projectId: PRJ,
+        targetRuntimeMs: TARGET_RUNTIME_MS, runtimeToleranceMs: RUNTIME_TOLERANCE_MS,
+        aspectRatio: '2.39:1', fps: 24,
+      },
+    },
     characters: {
-      [THORNE]: { id: THORNE, projectId: PRJ, name: 'Chancellor Elias Thorne', role: 'The Cornered Incumbent', visualPackages: [VPKG_THORNE], defaultCostume: COST_THORNE },
-      [LIN]: { id: LIN, projectId: PRJ, name: 'Minister Vespera Lin', role: 'The Cold Reformist', visualPackages: [VPKG_LIN], defaultCostume: COST_LIN },
+      // Identity canon (canonStatus) and visual canon (VisualPackage.approval)
+      // are independent axes: Thorne's bio is locked and his portrait is
+      // approved; Lin's bio is approved-but-not-locked while her portrait is
+      // still a candidate — the two locks can and do move independently.
+      [THORNE]: { id: THORNE, projectId: PRJ, name: 'Chancellor Elias Thorne', role: 'The Cornered Incumbent', visualPackages: [VPKG_THORNE], defaultCostume: COST_THORNE, canonStatus: 'locked', lockedBy: 'zhorton', lockedAt: '2026-09-26T00:00:00.000Z' },
+      [LIN]: { id: LIN, projectId: PRJ, name: 'Minister Vespera Lin', role: 'The Cold Reformist', visualPackages: [VPKG_LIN], defaultCostume: COST_LIN, canonStatus: 'approved' },
     },
     costumes: {
       [COST_THORNE]: { id: COST_THORNE, characterId: THORNE, name: 'Charcoal greatcoat', version: 'v1', costumeLocks: ['high stiff collar', 'obsidian lapel pin'], visualPackages: [VPKG_THORNE] },
@@ -180,9 +198,9 @@ export const buildScene06Graph = (): ProjectGraph => {
       [CHAMBER]: { id: CHAMBER, projectId: PRJ, name: 'Council Chamber', scoutCaptures: [], visualPackages: [], plateBackgrounds: [BG] },
     },
     relationships: {}, props: {}, scripts: {}, scenes: {},
-    continuityStates: {}, scoutCaptures: {},
+    continuityStates: {}, continuityReports: {}, scoutCaptures: {},
     plates, shots, takes, assets,
-    boards: { [BOARD]: { id: BOARD, projectId: PRJ, name: 'Main cut', fps: 24, scenes: [BSCN6] } },
+    boards: { [BOARD]: { id: BOARD, projectId: PRJ, name: 'Main cut', fps: 24, scenes: [BSCN6], cutSchema: 'cut.json.v1' } },
     boardScenes: { [BSCN6]: { id: BSCN6, boardId: BOARD, index: 5, title: 'Scene 06 — The Vote Count', slots: SLOT_PLAN.map(p => p.slot) } },
     boardSlots,
     events: [],

@@ -1,6 +1,7 @@
 import type {
-  AssetId, BoardId, BoardSceneId, BoardSlotId, CharacterId, ContinuityStateId,
-  CostumeId, PlaceId, PlateId, ProjectId, PropId, RelationshipId, SceneId,
+  AssetId, BoardId, BoardSceneId, BoardSlotId, CharacterId,
+  ContinuityReportId, ContinuityStateId, CostumeId, DeliverySpecId, LensId,
+  PlaceId, PlateId, ProjectId, PropId, RelationshipId, SceneId,
   ScoutCaptureId, ScriptId, ShotId, TakeId, VisualPackageId, WorldId,
 } from './ids.js';
 import type {
@@ -24,6 +25,12 @@ export interface Approvable {
   approval: ApprovalState;
   approvedBy?: string;
   approvedAt?: string;
+  /**
+   * State the reason on rejection — EDNA's ingest rule is "call the leak,
+   * do not install it as lock." A bare `approval: 'rejected'` with no note
+   * forces whoever finds it later to re-derive why.
+   */
+  rejectionNote?: string;
   provenance: Provenance;
 }
 
@@ -65,6 +72,32 @@ export interface World {
   locked: boolean;
 }
 
+/**
+ * Lens — the project's camera-grammar and visual-language lock.
+ *
+ * Distinct from `World` (story and behavior rules) and from a single Shot's
+ * `CameraSetup` (that shot's specific instantiation of the convention). Lens
+ * is the convention every `CameraSetup` in the project should conform to.
+ * Named as its own, non-reorderable pipeline step, separate from World:
+ * "World → Lens → Script → Cast → Places → Plates → i2v."
+ */
+export interface Lens {
+  id: LensId;
+  projectId: ProjectId;
+  /** e.g. '35mm' — the project's default/allowed focal length(s). */
+  focalConvention?: string;
+  /** e.g. 'ground to crane' — the allowed camera-height range. */
+  heightRange?: string;
+  /** e.g. 'ECU to extreme wide' — the allowed shot-distance range. */
+  distanceRange?: string;
+  /** e.g. '180, held' — screen-direction / line-of-action discipline. */
+  lineDiscipline?: string;
+  palette?: string;
+  /** Named camera/visual techniques this project forbids — named, not vibes. */
+  forbiddenTechniques: string[];
+  locked: boolean;
+}
+
 export interface Relationship {
   id: RelationshipId;
   from: CharacterId;
@@ -85,6 +118,13 @@ export interface VoiceProfile {
   rate?: number;
 }
 
+/**
+ * Identity/bio canon — distinct from `VisualPackage.approval`, which is the
+ * *visual* canon specifically. A character's backstory and voice can be
+ * locked long before, or after, their portrait is.
+ */
+export type CanonStatus = 'candidate' | 'approved' | 'locked';
+
 export interface Character {
   id: CharacterId;
   projectId: ProjectId;
@@ -99,6 +139,9 @@ export interface Character {
   defaultCostume?: CostumeId;
   /** Canon rules that must not change, e.g. 'no character growth'. */
   canonRules?: string[];
+  canonStatus: CanonStatus;
+  lockedBy?: string;
+  lockedAt?: string;
 }
 
 export interface Costume {
@@ -219,6 +262,12 @@ export interface SceneRequirements {
   costumes: CostumeId[];
   props: PropId[];
   place?: PlaceId;
+  /**
+   * Which costume each present character wears in *this* scene. `costumes`
+   * says which costumes appear; this says who wears which — needed because
+   * the same character can change costume scene to scene.
+   */
+  costumeMap?: Partial<Record<CharacterId, CostumeId>>;
 }
 
 export interface Scene {
@@ -258,6 +307,16 @@ export interface CameraSetup {
 }
 
 /**
+ * `composited` (default) is the normal Plate pipeline: blocking composite,
+ * then EDNA renders a master frame from it. `baked` is an already-finished
+ * still handed to Board directly — imported art, a promotional frame — that
+ * never goes through blocking and must not be re-keyed or mistaken for a
+ * live composite. "A finished still is a plate, not an avatar. Baked stills
+ * stay baked."
+ */
+export type PlateOrigin = 'composited' | 'baked';
+
+/**
  * Plate owns the frame and nothing else.
  *
  * Deliberately absent: duration, audio, sequence order, Takes, motion prompts.
@@ -270,9 +329,11 @@ export interface Plate extends Approvable {
   background: AssetId;
   layers: PlateLayer[];
   camera: CameraSetup;
-  /** Literal user-directed sticker composition. */
+  origin?: PlateOrigin; // defaults to 'composited'
+  /** Literal user-directed sticker composition. Absent for a 'baked' origin. */
   blockingComposite?: AssetId;
-  /** Polished production frame rendered by EDNA from the blocking composite. */
+  /** Polished production frame. Composited: rendered by EDNA from the
+   * blocking composite. Baked: the imported still itself. */
   masterFrame?: AssetId;
 }
 
@@ -405,6 +466,8 @@ export interface BoardSlot {
   transitionOut?: TransitionKind;
   continuityIn?: ContinuityStateId;
   continuityOut?: ContinuityStateId;
+  /** The full analysis this Slot's continuity was drawn from, if VCS-15 has run. */
+  continuityReportId?: ContinuityReportId;
   status: SlotStatus;
 }
 
@@ -424,6 +487,8 @@ export interface Board {
   name: string;
   fps: number;
   scenes: BoardSceneId[];
+  /** Version tag for the exported cut.json shape this Board produces. */
+  cutSchema: 'cut.json.v1';
 }
 
 // ─── VCS-15: CONTINUITY ──────────────────────────────────────────────────────
@@ -432,6 +497,13 @@ export interface ContinuityState {
   id: ContinuityStateId;
   /** What the analysis was performed against. */
   subject: { shotId?: ShotId; takeId?: TakeId; slotId?: BoardSlotId };
+  /**
+   * Where in the subject's own timeline this snapshot was taken, in ms.
+   * Without this, recovering "when" means parsing free-text Evidence.source
+   * strings — the exact kind of implicit contract this schema exists to
+   * replace with a real field.
+   */
+  atMs?: number;
   visibleCast: CharacterId[];
   costumes: CostumeId[];
   visibleProps: PropId[];
@@ -457,13 +529,25 @@ export interface RiskFlag {
   evidence?: Evidence;
 }
 
+/**
+ * The stored analysis artifact. Distinct from `ContinuityState`, which is
+ * one before/after snapshot: a Report references two States plus the risks
+ * and constraints found between them. Without an ID and a home in
+ * `ProjectGraph`, this would only ever exist as a transient return value —
+ * exactly the "analysis output evaporates" gap normalizing `DeliverySpec`
+ * was meant to close, rediscovered here while wiring up VCS-15 for real.
+ */
 export interface ContinuityReport {
+  id: ContinuityReportId;
+  /** What the analysis was performed against. */
+  subject: { shotId?: ShotId; takeId?: TakeId; slotId?: BoardSlotId };
   entering: ContinuityStateId;
   observedChanges: string[];
   ending: ContinuityStateId;
   risks: RiskFlag[];
   nextShotConstraints: string[];
   openQuestions: string[];
+  provenance: Provenance;
 }
 
 // ─── SCOUT ───────────────────────────────────────────────────────────────────
@@ -484,7 +568,16 @@ export interface ScoutCapture {
 
 // ─── DELIVERY / QC ───────────────────────────────────────────────────────────
 
+/**
+ * Normalized rather than embedded on Project, consistent with World/Board/
+ * Lens — a project may reasonably hold more than one over its life (a draft
+ * cut's requirements vs. final broadcast requirements), and normalizing now
+ * avoids the "two shapes for the same fact" problem this schema keeps
+ * catching elsewhere.
+ */
 export interface DeliverySpec {
+  id: DeliverySpecId;
+  projectId: ProjectId;
   targetRuntimeMs?: number;
   runtimeToleranceMs?: number;
   aspectRatio?: string;
@@ -532,13 +625,15 @@ export interface Project {
   logline?: string;
   stage: ProjectStage;
   worldId?: WorldId;
+  /** The project's camera-grammar lock. See `Lens`. */
+  lensId?: LensId;
   /**
    * The Board that constitutes the cut. Delivery QC sums this Board's slot
    * durations to get runtime — without it the runtime check cannot be
    * computed, so a project with a DeliverySpec and no Board is not gradeable.
    */
   boardId?: BoardId;
-  deliverySpec?: DeliverySpec;
+  deliverySpecId?: DeliverySpecId;
   deliveryReport?: DeliveryReport;
 }
 
@@ -550,6 +645,7 @@ export interface ProjectGraph {
   schemaVersion: '1.0';
   project: Project;
   worlds: Record<string, World>;
+  lenses: Record<string, Lens>;
   characters: Record<string, Character>;
   relationships: Record<string, Relationship>;
   costumes: Record<string, Costume>;
@@ -565,7 +661,9 @@ export interface ProjectGraph {
   boardScenes: Record<string, BoardScene>;
   boardSlots: Record<string, BoardSlot>;
   continuityStates: Record<string, ContinuityState>;
+  continuityReports: Record<string, ContinuityReport>;
   scoutCaptures: Record<string, ScoutCapture>;
+  deliverySpecs: Record<string, DeliverySpec>;
   assets: Record<string, Asset>;
   /** Append-only. The audit trail of how canon became canon. */
   events: CanonEvent[];

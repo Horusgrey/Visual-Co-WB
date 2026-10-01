@@ -71,13 +71,27 @@ export interface CanonEvent {
   provenance?: Provenance;
 }
 
-/** A single proposed mutation. */
+/**
+ * A single proposed mutation.
+ *
+ * `approve` and `lock` are split out from `update` on purpose. Under a plain
+ * `update`, the human-actor gate had to trust an engine's self-reported
+ * `EnginePatch.locksCanon` flag — nothing stopped an engine from setting
+ * `approval: 'approved'` through an ordinary `update` op while leaving that
+ * flag false. Making these their own op kinds lets `applyPatch` refuse a
+ * direct `update` to `approval`/`canonStatus` and gate on the op itself,
+ * which is a fact about the patch, not a claim by the engine that sent it.
+ */
 export type GraphOp =
   | { op: 'create'; kind: ObjectKind; id: AnyId; value: unknown }
   | { op: 'update'; kind: ObjectKind; id: AnyId; fields: Record<string, unknown> }
   | { op: 'delete'; kind: ObjectKind; id: AnyId }
   | { op: 'link'; from: AnyId; to: AnyId; as: string }
-  | { op: 'unlink'; from: AnyId; to: AnyId; as: string };
+  | { op: 'unlink'; from: AnyId; to: AnyId; as: string }
+  /** Sets `approval: 'approved'` on anything extending `Approvable`. */
+  | { op: 'approve'; kind: ObjectKind; id: AnyId; approvedBy: string; approvedAt: string }
+  /** Sets `canonStatus: 'locked'` — today, only `Character` carries this field. */
+  | { op: 'lock'; kind: ObjectKind; id: AnyId; lockedBy: string; lockedAt: string };
 
 /**
  * What every engine returns instead of writing the graph.

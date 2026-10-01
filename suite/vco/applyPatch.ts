@@ -21,14 +21,17 @@ export interface ApplyResult {
 }
 
 const COLLECTION: Record<string, keyof ProjectGraph> = {
-  World: 'worlds', Character: 'characters', Relationship: 'relationships',
-  Costume: 'costumes', Prop: 'props', Place: 'places',
-  VisualPackage: 'visualPackages', Script: 'scripts', Scene: 'scenes',
-  Plate: 'plates', Shot: 'shots', Take: 'takes', Board: 'boards',
-  BoardScene: 'boardScenes', BoardSlot: 'boardSlots',
-  ContinuityState: 'continuityStates', ScoutCapture: 'scoutCaptures',
-  Asset: 'assets',
+  World: 'worlds', Lens: 'lenses', Character: 'characters',
+  Relationship: 'relationships', Costume: 'costumes', Prop: 'props',
+  Place: 'places', VisualPackage: 'visualPackages', Script: 'scripts',
+  Scene: 'scenes', Plate: 'plates', Shot: 'shots', Take: 'takes',
+  Board: 'boards', BoardScene: 'boardScenes', BoardSlot: 'boardSlots',
+  ContinuityState: 'continuityStates', ContinuityReport: 'continuityReports',
+  ScoutCapture: 'scoutCaptures', DeliverySpec: 'deliverySpecs', Asset: 'assets',
 };
+
+/** Fields that must go through the 'approve'/'lock' ops, never a raw 'update'. */
+const CANON_GATED_FIELDS = ['approval', 'canonStatus'];
 
 const clone = <T>(v: T): T => structuredClone(v);
 
@@ -49,8 +52,15 @@ const collectionFor = (
 export const applyPatch = (graph: ProjectGraph, patch: EnginePatch): ApplyResult => {
   const rejections: string[] = [];
 
-  // Engines may propose canon; only a human actor locks it.
-  if (patch.locksCanon && CANNOT_LOCK_CANON.includes(patch.engine)) {
+  // Engines may propose canon; only a human actor locks it. Gated on either
+  // the patch's own declared intent (locksCanon) OR an actual approve/lock
+  // op appearing in it. The second half closes a real gap: `locksCanon` is
+  // self-reported by the engine, so a patch could carry out an approval via
+  // ops while simply leaving the flag false. The `update` guard below makes
+  // approve/lock the ONLY way to set those fields, so checking for the op
+  // itself — not the flag — is what actually enforces the rule.
+  const opRequiresApproval = patch.ops.some(op => op.op === 'approve' || op.op === 'lock');
+  if ((patch.locksCanon || opRequiresApproval) && CANNOT_LOCK_CANON.includes(patch.engine)) {
     const humanBacked = patch.events.some(e => !!e.provenance?.actor);
     if (!humanBacked) {
       rejections.push(
@@ -103,6 +113,10 @@ const applyOp = (g: ProjectGraph, op: GraphOp): string | null => {
       return null;
     }
     case 'update': {
+      const touched = CANON_GATED_FIELDS.filter(f => f in op.fields);
+      if (touched.length) {
+        return `update: ${op.id} attempted to set ${touched.join(', ')} directly — use the 'approve' or 'lock' op`;
+      }
       if (op.kind === 'Project') {
         Object.assign(g.project, op.fields);
         return null;
@@ -111,6 +125,24 @@ const applyOp = (g: ProjectGraph, op: GraphOp): string | null => {
       if (!coll) return `update: unsupported kind ${op.kind}`;
       if (!(op.id in coll)) return `update: ${op.id} does not exist`;
       Object.assign(coll[op.id], op.fields);
+      return null;
+    }
+    case 'approve': {
+      const coll = collectionFor(g, op.kind);
+      if (!coll) return `approve: unsupported kind ${op.kind}`;
+      if (!(op.id in coll)) return `approve: ${op.id} does not exist`;
+      Object.assign(coll[op.id], {
+        approval: 'approved', approvedBy: op.approvedBy, approvedAt: op.approvedAt,
+      });
+      return null;
+    }
+    case 'lock': {
+      const coll = collectionFor(g, op.kind);
+      if (!coll) return `lock: unsupported kind ${op.kind}`;
+      if (!(op.id in coll)) return `lock: ${op.id} does not exist`;
+      Object.assign(coll[op.id], {
+        canonStatus: 'locked', lockedBy: op.lockedBy, lockedAt: op.lockedAt,
+      });
       return null;
     }
     case 'delete': {

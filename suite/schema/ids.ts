@@ -30,19 +30,29 @@ export type ContinuityStateId = Brand<string, 'ContinuityStateId'>;
 export type VisualPackageId = Brand<string, 'VisualPackageId'>;
 export type EventId = Brand<string, 'EventId'>;
 export type ScoutCaptureId = Brand<string, 'ScoutCaptureId'>;
+/** Project-wide camera-grammar lock. See projectGraph.ts's `Lens`. */
+export type LensId = Brand<string, 'LensId'>;
+export type DeliverySpecId = Brand<string, 'DeliverySpecId'>;
+/**
+ * The stored analysis artifact (risks, next-shot constraints, open
+ * questions), as distinct from `ContinuityStateId`, which points at one
+ * before/after snapshot. A Report references two States, not the other way
+ * around.
+ */
+export type ContinuityReportId = Brand<string, 'ContinuityReportId'>;
 
 /** Any canonical object id, for provenance and event targeting. */
 export type AnyId =
   | ProjectId | WorldId | CharacterId | RelationshipId | ScriptId | SceneId
   | PlaceId | PropId | CostumeId | AssetId | ShotId | PlateId | BoardId
   | BoardSceneId | BoardSlotId | TakeId | ContinuityStateId | VisualPackageId
-  | EventId | ScoutCaptureId;
+  | EventId | ScoutCaptureId | LensId | DeliverySpecId | ContinuityReportId;
 
 export type ObjectKind =
   | 'Project' | 'World' | 'Character' | 'Relationship' | 'Script' | 'Scene'
   | 'Place' | 'Prop' | 'Costume' | 'Asset' | 'Shot' | 'Plate' | 'Board'
   | 'BoardScene' | 'BoardSlot' | 'Take' | 'ContinuityState' | 'VisualPackage'
-  | 'ScoutCapture' | 'DeliverySpec';
+  | 'ScoutCapture' | 'DeliverySpec' | 'Lens' | 'ContinuityReport';
 
 /** Prefix convention keeps raw IDs human-readable in logs and diffs. */
 export const ID_PREFIX: Record<ObjectKind, string> = {
@@ -51,7 +61,7 @@ export const ID_PREFIX: Record<ObjectKind, string> = {
   Costume: 'COST', Asset: 'AST', Shot: 'SHOT', Plate: 'PLATE',
   Board: 'BOARD', BoardScene: 'BSCN', BoardSlot: 'SLOT', Take: 'TAKE',
   ContinuityState: 'CONT', VisualPackage: 'VPKG', ScoutCapture: 'SCOUT',
-  DeliverySpec: 'DLV',
+  DeliverySpec: 'DLV', Lens: 'LENS', ContinuityReport: 'CRPT',
 };
 
 export const mintId = <T extends string>(kind: ObjectKind, slug?: string): T => {

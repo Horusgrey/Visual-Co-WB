@@ -213,6 +213,112 @@ measured against it.
   flag it if set-dressing continuity across scenes at one location becomes
   a real requirement.
 
+## Finding 11 — Conformance against the wire schema and Plate.pptx (grade A)
+
+**Audited**: 2026-09-30, against `reference/VCO_ProjectGraph_schema_v1.json`
+(a formal `hg.vco.projectgraph.v1` wire schema) and `reference/Plate_deep_dive_v1.md`
+(a 9-slide Plate-specific deep dive using a real "SUPERZ · Optics" proof
+cartridge).
+
+**A genuine enforcement gap, found by comparing the two patch-shape designs.**
+The JSON schema lists `op: [..., "approve", "lock"]` as operations distinct
+from `"update"`. My `applyPatch` previously trusted `EnginePatch.locksCanon`
+— a flag the *engine itself* sets — to decide whether to demand a human
+actor. Nothing stopped an engine from setting `approval: 'approved'` through
+an ordinary `update` op while simply leaving that flag `false`. `GraphOp`
+now has real `'approve'`/`'lock'` variants; a raw `'update'` touching
+`approval` or `canonStatus` is refused outright (`applyPatch.ts`'s
+`CANON_GATED_FIELDS` guard); and the human-actor gate fires on the op itself
+appearing in a patch, not on the engine's say-so. Self-check cases 13–14
+exercise exactly this: a sneaky `update` is rejected, and a correct
+`approve` op is gated the same way `locksCanon` always was.
+
+**Normalization gaps, same shape as Finding 9's `WorldBible` migration.**
+`DeliverySpec` was embedded on `Project`; the wire schema makes it its own
+object with an id, referenced by `delivery_spec_id`. Normalized to match —
+`DeliverySpec` now lives in `ProjectGraph.deliverySpecs`, referenced via
+`Project.deliverySpecId`. While doing this, the same evaporating-output
+problem turned up a second time: `ContinuityReport` (risks, next-shot
+constraints, open questions) had no id and no home in `ProjectGraph` at
+all — it only ever existed as a function's return value. Promoted to a
+stored, ID'd object (`continuityReports`), referenced from `BoardSlot` via
+`continuityReportId`. Neither fix was visible from reading the schema in
+isolation; both only surfaced from trying to build something against it
+(see Finding 12).
+
+**Three gaps closed from Plate.pptx's own vocabulary:**
+
+1. **"World → Lens → Script..." names Lens as its own pipeline step**,
+   distinct from World (story/behavior rules) and from a single shot's
+   camera setup. Added `Lens` as a first-class, normalized object
+   (`focalConvention`, `heightRange`, `distanceRange`, `lineDiscipline`,
+   `palette`, `forbiddenTechniques`), referenced via `Project.lensId`.
+2. **"Baked stills stay baked"** exposed an actual bug in
+   `plate.master_derives_from_blocking`: that invariant unconditionally
+   rejected any Plate with a `masterFrame` and no `blockingComposite`, which
+   is correct for the normal pipeline but wrong for an imported, already-
+   finished still that never went through blocking at all — exactly the
+   case the deck names ("A finished still is a plate, not an avatar").
+   Added `Plate.origin: 'composited' | 'baked'`; the invariant now only
+   applies to the `'composited'` default.
+3. **"Two people in the same suit are not interchangeable"** named a check
+   that didn't exist: nothing stopped a `PlateLayer` from placing Character
+   B's costume on Character A's layer. Added the
+   `plate.costume_matches_character` invariant.
+
+Also added, more generally: `Approvable.rejectionNote` ("call the leak, do
+not install it as lock" — a rejection should state why, not just flip a
+flag) and `Scene.requirements.costumeMap` (which character wears which
+costume *in this scene specifically*, since the wire schema's `Scene`
+carries this and my `SceneRequirements` didn't).
+
+## Finding 12 — Two prototypes, audited and then actually built against (grade A)
+
+**Audited**: 2026-09-30, against `VCS_Frameboard_1000068454.html` (a real
+8-beat continuity analysis of an actual SUPERZ clip — rooftop reality →
+vortex/title concealment → superhero identity) and `frame-forge-4.html` (a
+working "post-production sequencer" prototype).
+
+**`frame-forge-4.html` is a live specimen of the FrameForge/Board drift the
+suite map warns about.** Its own top comment says "a row = one frame in the
+sequence: image, description, audio, fx, duration" and it exports a
+`cut.json`-shaped bundle with sequence position baked in — i.e. it *is* "the
+old FrameForge prototype [that] discovered Board features early," named
+directly in the suite map's own FrameForge slide. No schema change follows
+from this beyond what Finding 1 already drew: FrameForge gets exactly the
+inspection-specific fields (ranges, key/end frames, extracted audio, notes)
+and nothing resembling sequence position.
+
+**Both engines named in the suite map were built, not just specified**,
+and verified against real data rather than synthetic fixtures:
+
+- `engines/frameforge.ts` — `Engine<FrameForgeRequest>`. Validates
+  selected/rejected range marks for self-contradiction and for exceeding
+  the source video's known duration before proposing a patch; never emits
+  an `approve`/`lock` op.
+- `engines/vcs15BeatIngest.ts` — `Engine<VcsBeatIngestRequest>`. Turns an
+  ordered beat list into one Shot, one Take, one `ContinuityState` per beat,
+  and a `ContinuityReport`. Deliberately does **not** guess continuity
+  breaks from adjectives in the beat text — `continuityBoundary` is read
+  verbatim from the input, because the Frameboard HTML's own `.note` div
+  already states its boundary ("rooftop reality → vortex/title concealment
+  zone → superhero state") in the source data itself. Re-deriving it from
+  prose would be exactly the fabricated confidence VCS-15's own rule
+  forbids.
+- `engines/boardReverseIngest.ts` — the one named Board capability
+  ("existing video → VCS beats → candidate Board Slots"), deliberately a
+  plain function rather than a full `Engine`, since the rest of Board's
+  responsibilities don't exist yet (same scoping as `vco/delivery.ts`).
+
+`fixtures/superzRooftop.ts` runs all three against the real 8 beats
+(`npm run suite:superz`): the two beats the source data names as breaks
+("Vortex Takeover," "Hero Reveal") surface as the report's two `high`-
+severity risks and nothing else does; 7 candidate slots are proposed, all
+referencing the one ingested Take — the Shot/Slot split holding up under a
+genuinely different scenario (splitting one continuous piece of existing
+footage) from the one it was designed for (reusing a freshly generated
+Shot across multiple cut points).
+
 ## Summary
 
 | Finding | Severity | Status |
@@ -227,3 +333,5 @@ measured against it.
 | 8. Scout evidence grading | — | Adopted as `EvidenceGrade` |
 | 9. App `WorldBible` shim | Accepted | Migration path documented |
 | 10. v1.1 suite map conformance | — | Mostly conformant; 3 gaps closed additively; 1 open question flagged |
+| 11. Wire schema + Plate.pptx conformance | Blocker (approve/lock gap) | Closed; see also open Place/Set question (Finding 10) |
+| 12. FrameForge/VCS-15 prototypes | — | FrameForge and VCS-15 beat-ingest built and proven against real data |
